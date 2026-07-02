@@ -165,6 +165,21 @@ svg .skf{filter:url(#sketch)}
   </div>
 </div>
 
+<!-- SET PASSWORD (invite / recovery) -->
+<div class="auth-wrap hide" id="setpwWrap">
+  <div class="auth">
+    <div class="brand"><img src="logo-mark.svg" alt=""><b>AUREO&nbsp;STUDIO</b></div>
+    <h1>Welcome — <span class="hl">set your password.</span></h1>
+    <p class="sub">Choose a password to finish setting up your account.</p>
+    <div class="card panel">
+      <label>New password</label>
+      <input id="spPass" type="password" placeholder="choose a strong password" autocomplete="new-password">
+      <div class="err" id="spErr"></div>
+      <button class="btn wide" id="spBtn">Set password &amp; continue →</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div class="hide" id="app" style="min-height:100vh;display:flex;flex-direction:column">
   <div class="topbar">
@@ -208,12 +223,25 @@ function closeModal(){$('#modalBg').classList.remove('on')}
 function go(v,arg){route={v,arg};render()}
 
 /* ---------- auth ---------- */
+const INVITE=/type=(invite|recovery)/.test(location.hash);
 async function boot(){
   const {data:{session}}=await sb.auth.getSession();
-  if(session) await enter(); else showLogin();
-  sb.auth.onAuthStateChange((_e,s)=>{ if(!s){ME=null;showLogin();} });
+  if(session && INVITE){ showSetPw(); }
+  else if(session){ await enter(); }
+  else showLogin();
+  sb.auth.onAuthStateChange((e,s)=>{ if(e==='PASSWORD_RECOVERY'){ showSetPw(); } else if(!s){ ME=null; showLogin(); } });
 }
-function showLogin(){ $('#authWrap').classList.remove('hide'); $('#app').classList.add('hide'); }
+function showLogin(){ $('#authWrap').classList.remove('hide'); $('#setpwWrap').classList.add('hide'); $('#app').classList.add('hide'); }
+function showSetPw(){ $('#authWrap').classList.add('hide'); $('#setpwWrap').classList.remove('hide'); $('#app').classList.add('hide'); }
+async function setPw(){
+  const p=$('#spPass').value; if(!p||p.length<6){ $('#spErr').textContent='Use at least 6 characters.'; return; }
+  $('#spBtn').disabled=true; $('#spBtn').textContent='Saving…';
+  const {error}=await sb.auth.updateUser({password:p});
+  $('#spBtn').disabled=false; $('#spBtn').textContent='Set password & continue →';
+  if(error){ $('#spErr').textContent=error.message; return; }
+  history.replaceState(null,'',location.pathname);
+  await enter();
+}
 async function login(){
   const email=$('#liEmail').value.trim(), pass=$('#liPass').value;
   $('#liErr').textContent=''; $('#liBtn').disabled=true; $('#liBtn').textContent='Signing in…';
@@ -417,6 +445,8 @@ async function doAddItem(pid){
 /* ---------- wire + boot ---------- */
 $('#liBtn').addEventListener('click',login);
 $('#liPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('#spBtn').addEventListener('click',setPw);
+$('#spPass').addEventListener('keydown',e=>{if(e.key==='Enter')setPw()});
 $('#logoutBtn').addEventListener('click',async()=>{ if(msgChannel)sb.removeChannel(msgChannel); await sb.auth.signOut(); showLogin(); });
 boot();
 </script>
