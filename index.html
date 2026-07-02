@@ -3,36 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Aureo Studio — Client Portal & Team CRM</title>
-<meta name="description" content="Aureo Space's client portal and team CRM. See your work move through every stage — with a human gate before anything ships.">
+<title>Aureo Studio — Client Portal</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="theme-color" content="#F4F1E9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{
-  --cream:#F4F1E9; --board:#e7e5df; --gold:#FFCC00; --ink:#16181D;
-  --sec:#4a4a42; --muted:#8a857c; --deep:#3a382f; --ondark:#d8d3c6;
-  --line:rgba(22,24,29,.14); --ok:#2f9e44; --warn:#e8590c;
-}
+:root{--cream:#F4F1E9;--board:#e7e5df;--gold:#FFCC00;--ink:#16181D;--sec:#4a4a42;--muted:#8a857c;--deep:#3a382f;--ondark:#d8d3c6;--line:rgba(22,24,29,.14);--ok:#2f9e44;--warn:#e8590c}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%}
-body{
-  font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);
-  background:var(--cream);
-  background-image:
-    repeating-linear-gradient(0deg,transparent,transparent 107px,rgba(22,24,29,.04) 107px,rgba(22,24,29,.04) 108px),
-    repeating-linear-gradient(90deg,transparent,transparent 107px,rgba(22,24,29,.04) 107px,rgba(22,24,29,.04) 108px);
-  -webkit-font-smoothing:antialiased;
-}
-a{color:inherit}
-button{font-family:inherit;cursor:pointer}
+html,body{min-height:100%}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--cream);
+ background-image:repeating-linear-gradient(0deg,transparent,transparent 107px,rgba(22,24,29,.04) 107px,rgba(22,24,29,.04) 108px),repeating-linear-gradient(90deg,transparent,transparent 107px,rgba(22,24,29,.04) 107px,rgba(22,24,29,.04) 108px);
+ -webkit-font-smoothing:antialiased}
+a{color:inherit}button{font-family:inherit;cursor:pointer}
 .mono{font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
 .hl{background:var(--gold);padding:.02em .16em;border-radius:5px}
+.hl-solid{background:var(--gold);padding:.02em .18em;border-radius:6px;display:inline-block;color:var(--ink)}
 .btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;font-weight:800;font-size:14px;letter-spacing:.03em;background:var(--gold);color:var(--ink);padding:12px 20px;border:2.5px solid var(--ink);border-radius:11px;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
 .btn:hover{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
-.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:3px 3px 0 var(--ink)}
 .btn.ghost{background:transparent;box-shadow:none;border-width:2px}
 .btn.ghost:hover{background:rgba(22,24,29,.05);transform:none}
 .btn.sm{padding:8px 14px;font-size:13px;box-shadow:2px 2px 0 var(--ink)}
@@ -41,77 +33,58 @@ input,textarea,select{width:100%;font-family:inherit;font-size:16px;font-weight:
 input:focus,textarea:focus,select:focus{box-shadow:3px 3px 0 var(--gold)}
 label{display:block;font-weight:700;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--deep);margin:16px 0 7px}
 .card{background:var(--cream);border:2.5px solid var(--ink);border-radius:16px;box-shadow:5px 5px 0 rgba(22,24,29,.9)}
-
 svg .skf{filter:url(#sketch)}
+.hide{display:none!important}
 
-/* ── LOGIN ── */
-.auth-wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px}
-.auth{width:min(440px,100%)}
+/* login */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+.auth{width:min(420px,100%)}
 .auth .brand{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px}
 .auth .brand img{width:46px;height:46px}
 .auth .brand b{font-weight:800;font-size:22px;letter-spacing:-.01em}
-.auth h1{text-align:center;font-weight:800;font-size:clamp(26px,4vw,32px);letter-spacing:-.03em;margin:18px 0 4px}
-.auth p.sub{text-align:center;color:var(--sec);font-size:15px;margin-bottom:26px}
+.auth h1{text-align:center;font-weight:800;font-size:clamp(24px,4vw,30px);letter-spacing:-.03em;margin:18px 0 4px}
+.auth p.sub{text-align:center;color:var(--sec);font-size:15px;margin-bottom:24px}
 .auth .panel{padding:28px 26px 30px}
-.tabs{display:flex;gap:6px;background:var(--board);border:2.5px solid var(--ink);border-radius:12px;padding:5px;margin-bottom:20px}
-.tabs button{flex:1;border:none;background:transparent;font-weight:800;font-size:13.5px;padding:9px;border-radius:8px;color:var(--deep)}
-.tabs button.on{background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
 .err{color:var(--warn);font-weight:700;font-size:13.5px;margin-top:12px;min-height:18px}
-.demo-hint{margin-top:20px;border-top:2px dashed var(--line);padding-top:16px}
-.demo-hint .mono{color:var(--muted);margin-bottom:10px;display:block}
-.demo-row{display:flex;gap:8px;flex-wrap:wrap}
-.demo-row button{flex:1;min-width:130px;text-align:left;background:var(--board);border:2px solid var(--ink);border-radius:10px;padding:10px 12px;font-weight:700;font-size:13px}
-.demo-row button b{display:block;font-size:13.5px}
-.demo-row button span{color:var(--muted);font-weight:600;font-size:11.5px}
+.privacy-note{margin-top:18px;border-top:2px dashed var(--line);padding-top:14px;font-size:12px;color:var(--muted);font-weight:600;display:flex;gap:8px;align-items:flex-start}
 
-/* ── APP SHELL ── */
-.app{display:none;min-height:100%;flex-direction:column}
+/* shell */
 .topbar{position:sticky;top:0;z-index:40;background:rgba(244,241,233,.92);backdrop-filter:blur(10px);border-bottom:2.5px solid var(--ink);display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
-.topbar .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px}
+.topbar .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;text-decoration:none}
 .topbar .brand img{width:32px;height:32px}
 .topbar .brand .role{font-weight:700;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--gold);border:2px solid var(--ink);border-radius:6px;padding:2px 7px;margin-left:4px}
 .who{display:flex;align-items:center;gap:12px}
 .who .nm{text-align:right;line-height:1.15}
-.who .nm b{font-size:14px}
-.who .nm span{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.who .nm b{font-size:14px}.who .nm span{display:block;font-size:11px;color:var(--muted);font-weight:600}
 .who .av{width:38px;height:38px;border-radius:50%;background:var(--gold);border:2.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
 .main{flex:1;max-width:1080px;width:100%;margin:0 auto;padding:26px 18px 90px}
 .page-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
-.page-h h2{font-weight:800;font-size:clamp(26px,4vw,38px);letter-spacing:-.03em;line-height:1.05}
+.page-h h2{font-weight:800;font-size:clamp(24px,4vw,36px);letter-spacing:-.03em;line-height:1.05}
 .page-h .eyebrow{display:flex;align-items:center;gap:9px;font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--deep);margin-bottom:8px}
 .page-h .eyebrow::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--gold)}
 .back{background:none;border:none;font-weight:700;font-size:14px;color:var(--deep);display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;padding:4px 0}
 
-/* ── STAGE TRACKER (client hero) ── */
+/* stage tracker */
 .stages{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0 6px}
 .stage{position:relative;text-align:center;padding:16px 6px 14px;border:2.5px solid var(--ink);border-radius:14px;background:var(--cream);opacity:.5}
 .stage .dot{width:34px;height:34px;margin:0 auto 9px;border-radius:50%;border:2.5px solid var(--ink);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
 .stage .lbl{font-weight:800;font-size:12.5px;letter-spacing:-.01em;line-height:1.15}
-.stage.done{opacity:1;background:#fff}
-.stage.done .dot{background:var(--ink);color:var(--gold)}
+.stage.done{opacity:1;background:#fff}.stage.done .dot{background:var(--ink);color:var(--gold)}
 .stage.current{opacity:1;background:var(--gold);box-shadow:4px 4px 0 var(--ink)}
-.stage.current .dot{background:var(--ink);color:var(--gold);animation:pulse 1.6s infinite}
-.stage.gate.current .dot{background:var(--ink);color:var(--gold)}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(22,24,29,.5)}50%{box-shadow:0 0 0 7px rgba(22,24,29,0)}}
+.stage.current .dot{background:var(--ink);color:var(--gold)}
 .stage .gatetag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--gold);font-weight:800;font-size:8.5px;letter-spacing:.1em;padding:2px 7px;border-radius:6px;white-space:nowrap}
 .stagenote{margin:14px 0 4px;font-weight:700;font-size:15.5px;color:var(--deep);display:flex;align-items:center;gap:9px}
-.stagenote svg{flex:none}
-@media(max-width:640px){
-  .stages{grid-template-columns:1fr;gap:0}
-  .stage{display:flex;align-items:center;gap:14px;text-align:left;padding:13px 14px;border-radius:0;border-bottom:none}
-  .stage:first-child{border-radius:14px 14px 0 0}
-  .stage:last-child{border-radius:0 0 14px 14px;border-bottom:2.5px solid var(--ink)}
-  .stage .dot{margin:0}
-  .stage.current{box-shadow:none}
-  .stage .gatetag{position:static;transform:none;margin-left:auto}
-}
+@media(max-width:640px){.stages{grid-template-columns:1fr;gap:0}
+ .stage{display:flex;align-items:center;gap:14px;text-align:left;padding:13px 14px;border-radius:0;border-bottom:none}
+ .stage:first-child{border-radius:14px 14px 0 0}.stage:last-child{border-radius:0 0 14px 14px;border-bottom:2.5px solid var(--ink)}
+ .stage .dot{margin:0}.stage.current{box-shadow:none}.stage .gatetag{position:static;transform:none;margin-left:auto}}
 
-/* ── project cards ── */
+/* cards */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-.pcard{padding:20px 20px 18px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.pcard{padding:20px;cursor:pointer;transition:transform .12s,box-shadow .12s}
 .pcard:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 rgba(22,24,29,.9)}
 .pcard .brandline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-.pcard .cli{font-weight:800;font-size:13px;letter-spacing:.02em;color:var(--deep);display:flex;align-items:center;gap:8px}
+.pcard .cli{font-weight:800;font-size:13px;color:var(--deep);display:flex;align-items:center;gap:8px}
 .pcard .cli .cav{width:24px;height:24px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .pcard h3{font-weight:800;font-size:20px;letter-spacing:-.02em;line-height:1.1;margin-bottom:4px}
 .pcard .ptype{color:var(--muted);font-weight:600;font-size:13px}
@@ -120,471 +93,332 @@ svg .skf{filter:url(#sketch)}
 .pcard .pbar i.on{background:var(--gold)}
 .pcard .pfoot{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
 .chip{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:var(--board);border:2px solid var(--ink);border-radius:20px;padding:5px 11px}
-.chip.gold{background:var(--gold)}
-.chip.gate{background:var(--ink);color:var(--gold)}
-.chip.done{background:var(--ok);color:#fff;border-color:var(--ink)}
-.unread{background:var(--warn);color:#fff;border-radius:20px;font-weight:800;font-size:11px;padding:3px 8px;border:2px solid var(--ink)}
+.chip.gold{background:var(--gold)}.chip.gate{background:var(--ink);color:var(--gold)}.chip.done{background:var(--ok);color:#fff;border-color:var(--ink)}
 
-/* ── project detail ── */
-.detail-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:22px;align-items:start}
-@media(max-width:860px){.detail-grid{grid-template-columns:1fr}}
-.section{padding:22px}
-.section h4{font-weight:800;font-size:16px;letter-spacing:-.01em;margin-bottom:4px;display:flex;align-items:center;gap:9px}
-.section .sub{color:var(--muted);font-weight:600;font-size:13px;margin-bottom:16px}
-.item{display:flex;align-items:center;gap:14px;padding:13px 0;border-top:1.5px solid var(--line)}
-.item:first-of-type{border-top:none}
-.item .ith{width:52px;height:52px;border-radius:9px;border:2.5px solid var(--ink);background:var(--board) center/cover;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px}
-.item .imeta{flex:1;min-width:0}
-.item .imeta b{font-weight:800;font-size:15px;display:block}
-.item .imeta span{color:var(--muted);font-weight:600;font-size:12.5px}
-.item .istat{flex:none}
-.approve-row{display:flex;gap:8px;margin-top:8px}
-
-/* thread */
-.thread{display:flex;flex-direction:column;height:100%}
-.msgs{display:flex;flex-direction:column;gap:12px;max-height:420px;overflow-y:auto;padding-right:4px;margin-bottom:14px}
-.msg{max-width:82%;padding:11px 14px;border:2.5px solid var(--ink);border-radius:14px;font-size:14.5px;line-height:1.45;font-weight:500}
-.msg .mh{font-weight:800;font-size:11px;letter-spacing:.04em;margin-bottom:3px;display:flex;justify-content:space-between;gap:12px}
-.msg .mh span{color:var(--muted);font-weight:600}
-.msg.them{align-self:flex-start;background:#fff}
-.msg.me{align-self:flex-end;background:var(--gold)}
-.msg.sys{align-self:center;background:var(--board);font-size:12px;font-weight:700;text-align:center;border-style:dashed;color:var(--deep)}
-.composer{display:flex;gap:8px;align-items:flex-end}
-.composer textarea{min-height:46px;max-height:120px;resize:none;padding:12px 14px}
-
-/* team: client groups */
 .cli-group{margin-bottom:30px}
 .cli-group .ch{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .cli-group .ch .cav{width:40px;height:40px;border-radius:50%;background:var(--gold);border:2.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
 .cli-group .ch b{font-weight:800;font-size:20px;letter-spacing:-.02em}
 .cli-group .ch span{color:var(--muted);font-weight:600;font-size:13px}
 
-.empty{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty svg{margin-bottom:14px}
-.empty b{display:block;font-size:18px;color:var(--ink);margin-bottom:6px}
+.detail-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:22px;align-items:start}
+@media(max-width:860px){.detail-grid{grid-template-columns:1fr}}
+.section{padding:22px}
+.section h4{font-weight:800;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.section .sub{color:var(--muted);font-weight:600;font-size:13px;margin-bottom:16px}
+.item{display:flex;align-items:center;gap:14px;padding:13px 0;border-top:1.5px solid var(--line)}
+.item:first-of-type{border-top:none}
+.item .ith{width:52px;height:52px;border-radius:9px;border:2.5px solid var(--ink);background:var(--board);flex:none;display:flex;align-items:center;justify-content:center;font-size:22px}
+.item .imeta{flex:1;min-width:0}.item .imeta b{font-weight:800;font-size:15px;display:block}.item .imeta span{color:var(--muted);font-weight:600;font-size:12.5px}
+.approve-row{display:flex;gap:8px;margin-top:8px}
 
-/* stage control (team) */
+.thread{display:flex;flex-direction:column}
+.msgs{display:flex;flex-direction:column;gap:12px;max-height:440px;overflow-y:auto;padding-right:4px;margin-bottom:14px}
+.msg{max-width:82%;padding:11px 14px;border:2.5px solid var(--ink);border-radius:14px;font-size:14.5px;line-height:1.45;font-weight:500}
+.msg .mh{font-weight:800;font-size:11px;margin-bottom:3px;display:flex;justify-content:space-between;gap:12px}
+.msg .mh span{color:var(--muted);font-weight:600}
+.msg.them{align-self:flex-start;background:#fff}
+.msg.me{align-self:flex-end;background:var(--gold)}
+.msg.sys{align-self:center;background:var(--board);font-size:12px;font-weight:700;text-align:center;border-style:dashed;color:var(--deep)}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{min-height:46px;max-height:120px;resize:none}
 .stagectl{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .stagectl button{border:2.5px solid var(--ink);background:var(--cream);border-radius:10px;padding:8px 12px;font-weight:800;font-size:12.5px}
 .stagectl button.on{background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
 .stagectl button.gate.on{background:var(--ink);color:var(--gold)}
-
-/* modal */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}.empty b{display:block;font-size:18px;color:var(--ink);margin-bottom:6px}
+.statpill{padding:14px 20px;box-shadow:3px 3px 0 rgba(22,24,29,.9)}
+.statpill .n{font-weight:800;font-size:28px;line-height:1}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(22,24,29,.55);z-index:80;align-items:center;justify-content:center;padding:20px}
 .modal-bg.on{display:flex}
 .modal{width:min(460px,100%);padding:26px;max-height:90vh;overflow-y:auto}
 .modal h3{font-weight:800;font-size:22px;letter-spacing:-.02em;margin-bottom:4px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--ink);color:var(--cream);font-weight:700;font-size:14px;padding:13px 22px;border-radius:12px;z-index:120;opacity:0;transition:.3s;pointer-events:none}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-.fab{position:fixed;right:20px;bottom:20px;z-index:50}
+.loading{text-align:center;padding:60px;color:var(--muted);font-weight:700}
 </style>
 </head>
 <body>
-
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<filter id="sketch" x="-25%" y="-25%" width="150%" height="150%">
-<feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="3" seed="7" result="n"/>
-<feDisplacementMap in="SourceGraphic" in2="n" scale="8" xChannelSelector="R" yChannelSelector="G"/>
-</filter>
+<filter id="sketch" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="8" xChannelSelector="R" yChannelSelector="G"/></filter>
 </defs></svg>
 
-<!-- ══ LOGIN ══ -->
+<!-- LOGIN -->
 <div class="auth-wrap" id="authWrap">
   <div class="auth">
     <div class="brand"><img src="logo-mark.svg" alt=""><b>AUREO&nbsp;STUDIO</b></div>
     <h1>Your work, <span class="hl">in the open.</span></h1>
-    <p class="sub">The client portal where AI does the volume and a human guards the soul.</p>
+    <p class="sub">Sign in to see your projects move through every stage.</p>
     <div class="card panel">
-      <div class="tabs">
-        <button id="tabLogin" class="on" onclick="AUTH.mode('login')">Log in</button>
-        <button id="tabInvite" onclick="AUTH.mode('invite')">I have an invite code</button>
-      </div>
-      <div id="formLogin">
-        <label>Email</label>
-        <input id="liEmail" type="email" placeholder="you@brand.com" autocomplete="username">
-        <label>Password</label>
-        <input id="liPass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')AUTH.login()">
-        <div class="err" id="liErr"></div>
-        <button class="btn wide" onclick="AUTH.login()">Log in →</button>
-      </div>
-      <div id="formInvite" style="display:none">
-        <label>Invite code</label>
-        <input id="ivCode" placeholder="AUREO-XXXX" style="text-transform:uppercase">
-        <label>Set a password</label>
-        <input id="ivPass" type="password" placeholder="choose a password">
-        <div class="err" id="ivErr"></div>
-        <button class="btn wide" onclick="AUTH.redeem()">Activate my account →</button>
-        <p style="margin-top:12px;font-size:12.5px;color:var(--muted);font-weight:600">Your invite code comes from Aureo Space over WhatsApp or email.</p>
-      </div>
-      <div class="demo-hint">
-        <span class="mono">Try it — one tap to log in as…</span>
-        <div class="demo-row" id="demoRow"></div>
+      <label>Email</label>
+      <input id="liEmail" type="email" placeholder="you@brand.com" autocomplete="username">
+      <label>Password</label>
+      <input id="liPass" type="password" placeholder="••••••••" autocomplete="current-password">
+      <div class="err" id="liErr"></div>
+      <button class="btn wide" id="liBtn">Log in →</button>
+      <div class="privacy-note">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z" stroke="#8a857c" stroke-width="2" stroke-linejoin="round"/></svg>
+        Invite-only. Your data is encrypted and isolated — you can only ever see your own brand's work.
       </div>
     </div>
-    <p style="text-align:center;margin-top:18px;font-size:12px;color:var(--muted);font-weight:600">Aureo Space · aureospace.netlify.app</p>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted);font-weight:600">Aureo Space · access by invitation</p>
   </div>
 </div>
 
-<!-- ══ APP ══ -->
-<div class="app" id="app">
+<!-- APP -->
+<div class="hide" id="app" style="min-height:100vh;display:flex;flex-direction:column">
   <div class="topbar">
-    <a class="brand" href="#" onclick="ROUTE.go('home');return false"><img src="logo-mark.svg" alt="">Aureo Studio<span class="role" id="roleBadge">TEAM</span></a>
+    <a class="brand" href="#" onclick="go('home');return false"><img src="logo-mark.svg" alt="">Aureo Studio<span class="role" id="roleBadge"></span></a>
     <div class="who">
       <div class="nm"><b id="whoName">—</b><span id="whoSub">—</span></div>
-      <div class="av" id="whoAv">Y</div>
-      <button class="btn ghost sm" onclick="AUTH.logout()">Log out</button>
+      <div class="av" id="whoAv">—</div>
+      <button class="btn ghost sm" id="logoutBtn">Log out</button>
     </div>
   </div>
   <div class="main" id="view"></div>
 </div>
 
-<div class="modal-bg" id="modalBg" onclick="if(event.target===this)UI.closeModal()"><div class="modal card" id="modal"></div></div>
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal card" id="modal"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ════════════════ AUREO STUDIO — data layer (localStorage) ════════════════ */
-const KEY='aureo_studio_v1';
+/* ═══════════ AUREO STUDIO — Supabase-backed, RLS-secured ═══════════ */
+const SUPABASE_URL = 'https://qdleoebiizvwuvmcjdad.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RCj9700n3BQdYoEz_sdueA_0EXZkHqi';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const STAGES=['Brief','Production','The Gate','Client Review','Shipped'];
-const STAGE_NOTE={
-  'Brief':'We’re scoping the work and locking the plan.',
-  'Production':'The AI team is building your content right now.',
-  'The Gate':'A human is checking every piece — legal, proofread, soul. Nothing ships unchecked.',
-  'Client Review':'It’s with you — approve what you love, ask for changes on the rest.',
-  'Shipped':'Live and out in the world. 🟡'
-};
-const uid=p=>p+Math.random().toString(36).slice(2,8);
+const STAGE_NOTE={0:'We’re scoping the work and locking the plan.',1:'The AI team is building your content right now.',2:'A human is checking every piece — legal, proofread, soul. Nothing ships unchecked.',3:'It’s with you — approve what you love, ask for changes on the rest.',4:'Live and out in the world. 🟡'};
+const $=(s,c)=>(c||document).querySelector(s);
+const $$=(s,c)=>Array.from((c||document).querySelectorAll(s));
+const initials=n=>(n||'?').split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmt=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'numeric',month:'short'})};
+const prog=p=>p.stage>=4?100:Math.round((p.stage+(p.stage===3?.5:.3))/5*100);
 
-function seed(){
-  const now=Date.now(), day=864e5;
-  const clients=[
-    {id:'cl_bloom',name:'Maison Bloom',city:'Bangalore',contact:'Priya Nair'},
-    {id:'cl_rider',name:'Rider’s Co.',city:'Dubai',contact:'Omar Haddad'}
-  ];
-  const users=[
-    {id:'u_yed',name:'Yedukrishna Suresh',email:'ysuresh634@gmail.com',pass:'aureo',role:'team',title:'Founder · the human in the loop'},
-    {id:'u_ai',name:'Aureo AI Team',email:'team@aureospace.com',pass:'aureo',role:'team',title:'The AI studio floor'},
-    {id:'u_priya',name:'Priya Nair',email:'priya@maisonbloom.com',pass:'aureo',role:'client',clientId:'cl_bloom',title:'Founder, Maison Bloom'},
-    {id:'u_omar',name:'Omar Haddad',email:'omar@ridersco.ae',pass:'aureo',role:'client',clientId:'cl_rider',title:'Marketing, Rider’s Co.'}
-  ];
-  const projects=[
-    {id:'p1',clientId:'cl_bloom',title:'April Reels Engine',type:'8 short-form reels · monthly',stage:2,created:now-9*day,
-     items:[{id:uid('it'),title:'Reel 01 — “unboxing calm”',emoji:'🎬',status:'gate'},
-            {id:uid('it'),title:'Reel 02 — founder story',emoji:'🎥',status:'gate'},
-            {id:uid('it'),title:'Caption set (8)',emoji:'✍️',status:'gate'}]},
-    {id:'p2',clientId:'cl_bloom',title:'Launch Carousel — Summer Drop',type:'5-slide carousel + caption',stage:3,created:now-6*day,
-     items:[{id:uid('it'),title:'Carousel — 5 slides',emoji:'🖼️',status:'review'},
-            {id:uid('it'),title:'Caption + hashtags',emoji:'✍️',status:'review'}]},
-    {id:'p3',clientId:'cl_rider',title:'Ride Season Ad Set',type:'Meta ads · 3 concepts',stage:1,created:now-3*day,
-     items:[{id:uid('it'),title:'Concept A — “the open road”',emoji:'🏍️',status:'draft'},
-            {id:uid('it'),title:'Concept B — city nights',emoji:'🌃',status:'draft'}]},
-    {id:'p4',clientId:'cl_rider',title:'March Content — shipped',type:'12 posts · delivered',stage:4,created:now-30*day,
-     items:[{id:uid('it'),title:'Full March pack',emoji:'📦',status:'approved'}]}
-  ];
-  const messages=[
-    {id:uid('m'),pid:'p2',uid:'u_yed',text:'Summer drop carousel is in your review — slides + caption. Approve what you love, tap “request change” on anything you want tweaked. 🟡',at:now-5*36e5},
-    {id:uid('m'),pid:'p2',uid:'u_priya',text:'Love slide 1 and 2! Can slide 4 use the peach background instead?',at:now-4*36e5},
-    {id:uid('m'),pid:'p2',uid:'u_yed',text:'On it — swapping to peach, back to you within the hour.',at:now-3.4*36e5},
-    {id:uid('m'),pid:'p1',uid:'u_yed',text:'April reels are at the gate — doing the human pass now (legal + proofread + a real watch-through). You’ll see them tomorrow morning.',at:now-26*36e5},
-    {id:uid('m'),pid:'p3',uid:'u_omar',text:'Excited for the ad concepts! Keeping it premium, not loud please.',at:now-2*36e5}
-  ];
-  return {clients,users,projects,messages,session:null,reads:{}};
+let ME=null;            // {id,email,role,client_id,name,title}
+let CLIENTS={};         // id -> client
+let route={v:'home',arg:null};
+let msgChannel=null;
+
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('on'),2200)}
+function modal(h){$('#modal').innerHTML=h;$('#modalBg').classList.add('on')}
+function closeModal(){$('#modalBg').classList.remove('on')}
+function go(v,arg){route={v,arg};render()}
+
+/* ---------- auth ---------- */
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session) await enter(); else showLogin();
+  sb.auth.onAuthStateChange((_e,s)=>{ if(!s){ME=null;showLogin();} });
 }
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.users)return d;}catch(e){}const s=seed();save(s);return s;}
-function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
-let DB=load();
-const me=()=>DB.users.find(u=>u.id===DB.session);
-const clientOf=id=>DB.clients.find(c=>c.id===id);
-const initials=n=>n.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-const fmt=t=>{const d=new Date(t),n=new Date();const sameDay=d.toDateString()===n.toDateString();
-  return sameDay?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'numeric',month:'short'});};
-function projProgress(p){return p.stage>=4?100:Math.round((p.stage+ (p.stage===3?.5:.3))/5*100);}
+function showLogin(){ $('#authWrap').classList.remove('hide'); $('#app').classList.add('hide'); }
+async function login(){
+  const email=$('#liEmail').value.trim(), pass=$('#liPass').value;
+  $('#liErr').textContent=''; $('#liBtn').disabled=true; $('#liBtn').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  $('#liBtn').disabled=false; $('#liBtn').textContent='Log in →';
+  if(error){ $('#liErr').textContent = error.message.includes('Invalid')?'That email + password don’t match.':error.message; return; }
+  await enter();
+}
+async function enter(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){showLogin();return;}
+  const {data:prof}=await sb.from('profiles').select('role,client_id,name,title').eq('id',user.id).maybeSingle();
+  ME={id:user.id,email:user.email,role:prof?.role||'client',client_id:prof?.client_id||null,name:prof?.name||user.email,title:prof?.title||''};
+  // load the clients this user can see (RLS scopes it)
+  const {data:cls}=await sb.from('clients').select('*');
+  CLIENTS={}; (cls||[]).forEach(c=>CLIENTS[c.id]=c);
+  $('#authWrap').classList.add('hide'); $('#app').classList.remove('hide');
+  $('#roleBadge').textContent = ME.role==='team'?'TEAM':'CLIENT';
+  $('#whoName').textContent = (ME.name||ME.email).split(' ')[0];
+  $('#whoSub').textContent = ME.role==='team'?'Aureo Space':(CLIENTS[ME.client_id]?.name||'Client');
+  $('#whoAv').textContent = initials(ME.name||ME.email);
+  route={v:'home',arg:null}; render();
+}
 
-/* ════════════════ AUTH ════════════════ */
-const AUTH={
-  mode(m){
-    document.getElementById('tabLogin').classList.toggle('on',m==='login');
-    document.getElementById('tabInvite').classList.toggle('on',m==='invite');
-    document.getElementById('formLogin').style.display=m==='login'?'':'none';
-    document.getElementById('formInvite').style.display=m==='invite'?'':'none';
-  },
-  login(){
-    const e=document.getElementById('liEmail').value.trim().toLowerCase();
-    const p=document.getElementById('liPass').value;
-    const u=DB.users.find(u=>u.email.toLowerCase()===e);
-    if(!u||u.pass!==p){document.getElementById('liErr').textContent='That email + password don’t match. Try a demo login below.';return;}
-    DB.session=u.id;save(DB);UI.enter();
-  },
-  quick(id){DB.session=id;save(DB);UI.enter();},
-  redeem(){
-    const code=document.getElementById('ivCode').value.trim().toUpperCase();
-    const p=document.getElementById('ivPass').value;
-    const u=DB.users.find(u=>('AUREO-'+initials(u.name)+ (u.role==='client'?'C':'T')).toUpperCase()===code || (u.invite&&u.invite===code));
-    if(!u){document.getElementById('ivErr').textContent='Invite code not recognised. Check the code Aureo sent you.';return;}
-    if(!p||p.length<4){document.getElementById('ivErr').textContent='Choose a password (min 4 characters).';return;}
-    u.pass=p;DB.session=u.id;save(DB);UI.enter();
-  },
-  logout(){DB.session=null;save(DB);location.hash='';UI.boot();}
-};
+/* ---------- render ---------- */
+async function render(){
+  const el=$('#view'); el.innerHTML='<div class="loading">Loading…</div>'; window.scrollTo(0,0);
+  try{
+    if(route.v==='project') await renderProject(route.arg);
+    else if(ME.role==='team') await renderTeamHome();
+    else await renderClientHome();
+  }catch(e){ el.innerHTML='<div class="empty"><b>Something went wrong</b>'+esc(e.message||'')+'</div>'; }
+}
 
-/* ════════════════ ROUTER ════════════════ */
-const ROUTE={
-  go(v,arg){location.hash=arg?v+'/'+arg:v;},
-  cur(){const h=location.hash.replace(/^#/,'');const [v,arg]=h.split('/');return {v:v||'home',arg};}
-};
-window.addEventListener('hashchange',()=>UI.render());
+function stageTracker(p){
+  return `<div class="stages">${STAGES.map((s,i)=>{
+    const cls=i<p.stage?'done':i===p.stage?'current':''; return `<div class="stage ${cls} ${s==='The Gate'?'gate':''}">
+    ${s==='The Gate'?'<span class="gatetag">HUMAN GATE</span>':''}<div class="dot">${i<p.stage?'✓':i+1}</div><div class="lbl">${s}</div></div>`}).join('')}</div>
+   <div class="stagenote"><svg class="skf" width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16181D" stroke-width="2.4"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.6" stroke-linecap="round"/></svg>${STAGE_NOTE[p.stage]}</div>`;
+}
+function projCard(p,clientView){
+  const c=CLIENTS[p.client_id]||{name:'—'};
+  const chip=p.stage===4?'done':p.stage===2?'gate':p.stage===3?'gold':'';
+  return `<div class="card pcard" onclick="go('project','${p.id}')">
+   <div class="brandline"><div class="cli"><div class="cav">${initials(c.name)}</div>${clientView?esc(p.type||''):esc(c.name)}</div></div>
+   <h3>${esc(p.title)}</h3><div class="ptype">${clientView?'':esc(p.type||'')}</div>
+   <div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div>
+   <div class="pfoot"><span class="chip ${chip}">${p.stage===2?'🔒 '+STAGES[2]:STAGES[p.stage]}</span><span class="mono" style="color:var(--muted)">${prog(p)}%</span></div></div>`;
+}
 
-/* ════════════════ UI ════════════════ */
-const UI={
-  boot(){
-    document.getElementById('authWrap').style.display='flex';
-    document.getElementById('app').style.display='none';
-    const row=document.getElementById('demoRow');
-    row.innerHTML=[
-      ['u_yed','Founder','Yedukrishna — team'],
-      ['u_priya','Client','Maison Bloom'],
-      ['u_omar','Client','Rider’s Co.']
-    ].map(([id,tag,sub])=>`<button onclick="AUTH.quick('${id}')"><b>${tag}</b><span>${sub}</span></button>`).join('');
-  },
-  enter(){
-    const u=me();if(!u)return this.boot();
-    document.getElementById('authWrap').style.display='none';
-    document.getElementById('app').style.display='flex';
-    document.getElementById('roleBadge').textContent=u.role==='team'?'TEAM':'CLIENT';
-    document.getElementById('whoName').textContent=u.name.split(' ')[0];
-    document.getElementById('whoSub').textContent=u.role==='team'?'Aureo Space':clientOf(u.clientId).name;
-    document.getElementById('whoAv').textContent=initials(u.name);
-    if(!location.hash)location.hash='home';else this.render();
-    this.render();
-  },
-  render(){
-    const u=me();if(!u){return this.boot();}
-    const {v,arg}=ROUTE.cur();
-    const el=document.getElementById('view');
-    if(v==='project'){el.innerHTML=Views.project(arg);Views.afterProject(arg);}
-    else if(u.role==='team'){el.innerHTML=Views.teamHome();}
-    else {el.innerHTML=Views.clientHome();}
-    window.scrollTo(0,0);
-  },
-  toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(this._t);this._t=setTimeout(()=>el.classList.remove('on'),2200);},
-  modal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modalBg').classList.add('on');},
-  closeModal(){document.getElementById('modalBg').classList.remove('on');}
-};
+async function renderTeamHome(){
+  const {data:projects}=await sb.from('projects').select('*').order('created_at',{ascending:false});
+  const ps=projects||[];
+  const byClient={}; Object.values(CLIENTS).forEach(c=>byClient[c.id]=[]);
+  ps.forEach(p=>{(byClient[p.client_id]=byClient[p.client_id]||[]).push(p)});
+  $('#view').innerHTML=`
+  <div class="page-h"><div><div class="eyebrow">The studio floor</div><h2>Every client, every stage.</h2></div>
+   <button class="btn" onclick="newProject()">+ New project</button></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px">
+   <div class="card statpill"><div class="n">${Object.keys(CLIENTS).length}</div><div class="mono" style="color:var(--muted);margin-top:2px">Clients</div></div>
+   <div class="card statpill"><div class="n">${ps.filter(p=>p.stage<4).length}</div><div class="mono" style="color:var(--muted);margin-top:2px">Active projects</div></div>
+   <div class="card statpill"><div class="n">${ps.filter(p=>p.stage===2).length}</div><div class="mono" style="color:var(--muted);margin-top:2px">At the gate</div></div>
+   <div class="card statpill"><div class="n">${ps.filter(p=>p.stage===3).length}</div><div class="mono" style="color:var(--muted);margin-top:2px">Awaiting client</div></div></div>
+  ${Object.values(CLIENTS).length?Object.values(CLIENTS).map(c=>`
+   <div class="cli-group"><div class="ch"><div class="cav">${initials(c.name)}</div><div><b>${esc(c.name)}</b> &nbsp;<span>${esc(c.contact||'')}${c.city?' · '+esc(c.city):''}</span></div></div>
+   <div class="grid">${(byClient[c.id]||[]).map(p=>projCard(p,false)).join('')||'<p class="mono" style="color:var(--muted)">No projects yet.</p>'}</div></div>`).join('')
+   :`<div class="empty"><b>No clients yet</b>Add your first client + project to get started.<div style="margin-top:16px"><button class="btn" onclick="newClient()">+ Add a client</button></div></div>`}`;
+}
 
-/* ════════════════ VIEWS ════════════════ */
-const Views={
-  stageTracker(p,clientView){
-    return `<div class="stages">${STAGES.map((s,i)=>{
-      const cls=i<p.stage?'done':i===p.stage?'current':'';
-      const gate=s==='The Gate'?'gate':'';
-      return `<div class="stage ${cls} ${gate}">
-        ${s==='The Gate'?'<span class="gatetag">HUMAN GATE</span>':''}
-        <div class="dot">${i<p.stage?'✓':i+1}</div>
-        <div class="lbl">${s}</div></div>`;
-    }).join('')}</div>
-    <div class="stagenote">
-      <svg class="skf" width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16181D" stroke-width="2.4"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.6" stroke-linecap="round"/></svg>
-      ${STAGE_NOTE[STAGES[p.stage]]}
-    </div>`;
-  },
+async function renderClientHome(){
+  if(!ME.client_id){ $('#view').innerHTML=`<div class="empty"><b>Your account isn’t linked to a brand yet</b>Hang tight — Aureo Space will finish setting up your access. Refresh in a bit.</div>`; return; }
+  const c=CLIENTS[ME.client_id]||{name:'your brand'};
+  const {data:projects}=await sb.from('projects').select('*').order('created_at',{ascending:false});
+  const ps=projects||[]; const needs=ps.filter(p=>p.stage===3);
+  $('#view').innerHTML=`
+  <div class="page-h"><div><div class="eyebrow">${esc(c.name)}</div><h2>Hi ${esc((ME.name||'there').split(' ')[0])} — here’s your work.</h2></div></div>
+  ${needs.length?`<div class="card" style="padding:16px 20px;background:var(--gold);margin-bottom:22px;display:flex;align-items:center;gap:14px">
+   <svg class="skf" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 21 6.6 18.2l.9-5.5-4-3.9L9 8z" stroke="#16181D" stroke-width="2" stroke-linejoin="round"/></svg>
+   <b>${needs.length} ${needs.length>1?'projects need':'project needs'} your review — tap in to approve.</b></div>`:''}
+  ${ps.length?`<div class="grid">${ps.map(p=>projCard(p,true)).join('')}</div>`:`<div class="empty"><b>No projects yet</b>Your work will appear here the moment we start.</div>`}`;
+}
 
-  /* ---------- TEAM HOME ---------- */
-  teamHome(){
-    const groups=DB.clients.map(c=>{
-      const ps=DB.projects.filter(p=>p.clientId===c.id).sort((a,b)=>b.created-a.created);
-      return {c,ps};
-    });
-    const totalActive=DB.projects.filter(p=>p.stage<4).length;
-    return `
-    <div class="page-h">
-      <div><div class="eyebrow">The studio floor</div><h2>Every client, every stage.</h2></div>
-      <button class="btn" onclick="Actions.newProject()">+ New project</button>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px">
-      ${this.statPill(DB.clients.length,'Clients')}
-      ${this.statPill(totalActive,'Active projects')}
-      ${this.statPill(DB.projects.filter(p=>p.stage===2).length,'At the gate')}
-      ${this.statPill(DB.projects.filter(p=>p.stage===3).length,'Awaiting client')}
-    </div>
-    ${groups.map(({c,ps})=>`
-      <div class="cli-group">
-        <div class="ch"><div class="cav">${initials(c.name)}</div>
-          <div><b>${c.name}</b> &nbsp;<span>${c.contact} · ${c.city}</span></div>
-        </div>
-        <div class="grid">${ps.map(p=>this.projCard(p,false)).join('')||'<p class="mono" style="color:var(--muted)">No projects yet.</p>'}</div>
-      </div>`).join('')}`;
-  },
-  statPill(n,l){return `<div class="card" style="padding:14px 20px;box-shadow:3px 3px 0 rgba(22,24,29,.9)"><div style="font-weight:800;font-size:28px;line-height:1">${n}</div><div class="mono" style="color:var(--muted);margin-top:2px">${l}</div></div>`;},
+async function renderProject(id){
+  const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
+  if(!p){ $('#view').innerHTML=`<button class="back" onclick="go('home')">← Back</button><div class="empty"><b>Not found</b>You may not have access to this project.</div>`; return; }
+  const c=CLIENTS[p.client_id]||{name:'—',contact:''};
+  const team=ME.role==='team';
+  const {data:items}=await sb.from('deliverables').select('*').eq('project_id',id).order('created_at');
+  const {data:msgs}=await sb.from('messages').select('*').eq('project_id',id).order('created_at');
+  $('#view').innerHTML=`
+  <button class="back" onclick="go('home')">← ${team?'All clients':'My work'}</button>
+  <div class="page-h"><div><div class="eyebrow">${esc(c.name)} · ${esc(p.type||'')}</div><h2>${esc(p.title)}</h2></div>
+   ${team?`<button class="btn ghost sm" onclick="addItem('${p.id}')">+ Add deliverable</button>`:''}</div>
+  <div class="card section" style="margin-bottom:22px">${stageTracker(p)}
+   ${team?`<div style="margin-top:18px"><div class="mono" style="color:var(--muted);margin-bottom:8px">Move to stage — client sees it instantly</div>
+   <div class="stagectl">${STAGES.map((s,i)=>`<button class="${i===p.stage?'on':''} ${s==='The Gate'?'gate':''}" onclick="setStage('${p.id}',${i})">${s}</button>`).join('')}</div></div>`:''}</div>
+  <div class="detail-grid">
+   <div class="card section"><h4>📦 Deliverables</h4><div class="sub">${team?'What the studio is making.':'Approve what you love — request changes on the rest.'}</div>
+    <div>${(items||[]).map(it=>itemRow(p,it,team)).join('')||'<p class="mono" style="color:var(--muted)">No deliverables yet.</p>'}</div></div>
+   <div class="card section thread"><h4>💬 Project thread</h4><div class="sub">${team?'Talk to '+esc(c.contact||'the client')+' here.':'Talk to your Aureo team — they read everything.'}</div>
+    <div class="msgs" id="msgs">${renderMsgs(msgs||[])}</div>
+    <div class="composer"><textarea id="msgIn" placeholder="Write a message…" rows="1"></textarea><button class="btn" onclick="sendMsg('${p.id}')">Send</button></div></div></div>`;
+  const m=$('#msgs'); if(m)m.scrollTop=m.scrollHeight;
+  const ta=$('#msgIn'); if(ta){ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px'});
+   ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(p.id);}});}
+  subscribeMsgs(id);
+}
+function itemRow(p,it,team){
+  const map={draft:['✏️ In production','chip'],gate:['🔒 At the human gate','chip gate'],review:['👀 Your review','chip gold'],approved:['✓ Approved','chip done'],changes:['↺ Changes asked','chip']};
+  const [lbl,cls]=map[it.status]||map.draft;
+  let action='';
+  if(ME.role==='client'&&it.status==='review'){action=`<div class="approve-row"><button class="btn sm" onclick="approve('${it.id}','${p.id}')">✓ Approve</button><button class="btn ghost sm" onclick="reqChange('${it.id}','${p.id}')">↺ Request change</button></div>`;}
+  return `<div class="item"><div class="ith">${it.emoji||'📄'}</div><div class="imeta"><b>${esc(it.title)}</b><span>${team?'Status set by the studio':'Deliverable'}</span>${action}</div><div class="istat"><span class="${cls}">${lbl}</span></div></div>`;
+}
+function renderMsgs(list){
+  if(!list.length) return `<div class="msg sys">This is the start of your project thread.</div>`;
+  return list.map(m=>{
+    if(m.system) return `<div class="msg sys">${esc(m.body)}</div>`;
+    const mine=m.sender_id===ME.id;
+    let who = mine?'You':(ME.role==='client'?'Aureo Space':'Client');
+    return `<div class="msg ${mine?'me':'them'}"><div class="mh">${who}<span>${fmt(m.created_at)}</span></div>${esc(m.body)}</div>`;
+  }).join('');
+}
+function subscribeMsgs(pid){
+  if(msgChannel){sb.removeChannel(msgChannel);msgChannel=null;}
+  msgChannel=sb.channel('msgs-'+pid).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'project_id=eq.'+pid},async()=>{
+    if(route.v!=='project'||route.arg!==pid)return;
+    const {data:msgs}=await sb.from('messages').select('*').eq('project_id',pid).order('created_at');
+    const box=$('#msgs'); if(box){box.innerHTML=renderMsgs(msgs||[]);box.scrollTop=box.scrollHeight;}
+  }).subscribe();
+}
 
-  /* ---------- CLIENT HOME ---------- */
-  clientHome(){
-    const u=me();const c=clientOf(u.clientId);
-    const ps=DB.projects.filter(p=>p.clientId===u.clientId).sort((a,b)=>b.created-a.created);
-    const active=ps.filter(p=>p.stage<4);
-    const needsYou=ps.filter(p=>p.stage===3);
-    return `
-    <div class="page-h">
-      <div><div class="eyebrow">${c.name}</div><h2>Hi ${u.name.split(' ')[0]} — here’s your work.</h2></div>
-    </div>
-    ${needsYou.length?`<div class="card" style="padding:16px 20px;background:var(--gold);margin-bottom:22px;display:flex;align-items:center;gap:14px">
-      <svg class="skf" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 21 6.6 18.2l.9-5.5-4-3.9L9 8z" stroke="#16181D" stroke-width="2" stroke-linejoin="round"/></svg>
-      <b style="font-weight:800">${needsYou.length} ${needsYou.length>1?'projects need':'project needs'} your review — scroll down to approve.</b></div>`:''}
-    <div class="grid">${ps.map(p=>this.projCard(p,true)).join('')}</div>`;
-  },
+/* ---------- actions ---------- */
+async function sendMsg(pid){
+  const ta=$('#msgIn'); const body=ta.value.trim(); if(!body)return; ta.value=''; ta.style.height='auto';
+  const {error}=await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body});
+  if(error){toast('Could not send');return;}
+  const {data:msgs}=await sb.from('messages').select('*').eq('project_id',pid).order('created_at');
+  const box=$('#msgs'); if(box){box.innerHTML=renderMsgs(msgs||[]);box.scrollTop=box.scrollHeight;}
+}
+async function setStage(pid,s){
+  await sb.from('projects').update({stage:s}).eq('id',pid);
+  if(s===2){ await sb.from('deliverables').update({status:'gate'}).eq('project_id',pid).eq('status','draft'); }
+  if(s===3){ await sb.from('deliverables').update({status:'review'}).eq('project_id',pid).eq('status','gate'); }
+  await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'→ Moved to “'+STAGES[s]+'”'});
+  toast('Stage updated — client sees it now'); render();
+}
+async function approve(itid,pid){
+  await sb.from('deliverables').update({status:'approved'}).eq('id',itid);
+  await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'✓ Approved — looks great!'});
+  toast('Approved — thank you!'); render();
+}
+function reqChange(itid,pid){
+  modal(`<h3>Request a change</h3><p class="sub" style="color:var(--muted);font-weight:600;margin:6px 0 8px">Tell the studio exactly what to tweak.</p>
+   <textarea id="chgTxt" rows="4" placeholder="e.g. Use the peach background on slide 4"></textarea>
+   <div style="display:flex;gap:8px;margin-top:16px"><button class="btn wide" onclick="doChange('${itid}','${pid}')">Send request</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doChange(itid,pid){
+  const t=$('#chgTxt').value.trim();
+  await sb.from('deliverables').update({status:'changes'}).eq('id',itid);
+  await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'↺ Change requested: '+(t||'please revise')});
+  closeModal(); toast('Sent to the studio'); render();
+}
+function newClient(){
+  modal(`<h3>New client</h3><label>Brand name</label><input id="ncName" placeholder="e.g. Maison Bloom">
+   <label>Contact person</label><input id="ncContact" placeholder="e.g. Priya Nair"><label>City</label><input id="ncCity" placeholder="e.g. Bangalore">
+   <div style="display:flex;gap:8px;margin-top:18px"><button class="btn wide" onclick="doNewClient()">Create client</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doNewClient(){
+  const name=$('#ncName').value.trim(); if(!name){toast('Give it a name');return;}
+  const {data,error}=await sb.from('clients').insert({name,contact:$('#ncContact').value.trim(),city:$('#ncCity').value.trim()}).select().single();
+  if(error){toast(error.message);return;}
+  CLIENTS[data.id]=data; closeModal(); toast('Client created'); render();
+}
+async function newProject(){
+  if(!Object.keys(CLIENTS).length){ newClient(); return; }
+  const opts=Object.values(CLIENTS).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  modal(`<h3>New project</h3><label>Client</label><select id="npClient">${opts}</select>
+   <label>Project title</label><input id="npTitle" placeholder="e.g. May Reels Engine"><label>Type / scope</label><input id="npType" placeholder="e.g. 8 reels · monthly">
+   <div style="display:flex;gap:8px;margin-top:18px"><button class="btn wide" onclick="doNewProject()">Create project</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doNewProject(){
+  const title=$('#npTitle').value.trim(); if(!title){toast('Give it a title');return;}
+  const {data,error}=await sb.from('projects').insert({client_id:$('#npClient').value,title,type:$('#npType').value.trim(),stage:0}).select().single();
+  if(error){toast(error.message);return;}
+  closeModal(); toast('Project created'); go('project',data.id);
+}
+function addItem(pid){
+  modal(`<h3>Add deliverable</h3><label>Title</label><input id="aiTitle" placeholder="e.g. Reel 03 — testimonial"><label>Emoji (optional)</label><input id="aiEmoji" placeholder="🎬" maxlength="4">
+   <div style="display:flex;gap:8px;margin-top:18px"><button class="btn wide" onclick="doAddItem('${pid}')">Add</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doAddItem(pid){
+  const title=$('#aiTitle').value.trim(); if(!title){toast('Give it a title');return;}
+  const {data:p}=await sb.from('projects').select('stage').eq('id',pid).single();
+  const status=p.stage>=3?'review':p.stage===2?'gate':'draft';
+  const {error}=await sb.from('deliverables').insert({project_id:pid,title,emoji:$('#aiEmoji').value.trim()||'📄',status});
+  if(error){toast(error.message);return;}
+  closeModal(); render();
+}
 
-  projCard(p,clientView){
-    const c=clientOf(p.clientId);
-    const unread=Msg.unread(p.id);
-    const st=STAGES[p.stage];
-    const chipCls=p.stage===4?'done':p.stage===2?'gate':p.stage===3?'gold':'';
-    return `<div class="card pcard" onclick="ROUTE.go('project','${p.id}')">
-      <div class="brandline">
-        <div class="cli"><div class="cav">${initials(c.name)}</div>${clientView?p.type:c.name}</div>
-        ${unread?`<span class="unread">${unread} new</span>`:''}
-      </div>
-      <h3>${p.title}</h3>
-      <div class="ptype">${clientView?'':p.type}</div>
-      <div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div>
-      <div class="pfoot">
-        <span class="chip ${chipCls}">${p.stage===2?'🔒 '+st:st}</span>
-        <span class="mono" style="color:var(--muted)">${projProgress(p)}%</span>
-      </div>
-    </div>`;
-  },
-
-  /* ---------- PROJECT DETAIL ---------- */
-  project(id){
-    const u=me();const p=DB.projects.find(p=>p.id===id);
-    if(!p) return `<button class="back" onclick="ROUTE.go('home')">← Back</button><div class="empty"><b>Project not found</b></div>`;
-    if(u.role==='client'&&p.clientId!==u.clientId) return `<button class="back" onclick="ROUTE.go('home')">← Back</button><div class="empty"><b>This isn’t your project.</b>You can only see ${clientOf(u.clientId).name}’s work.</div>`;
-    const c=clientOf(p.clientId);
-    const team=u.role==='team';
-    return `
-    <button class="back" onclick="ROUTE.go('home')">← ${team?'All clients':'My work'}</button>
-    <div class="page-h">
-      <div><div class="eyebrow">${c.name} · ${p.type}</div><h2>${p.title}</h2></div>
-      ${team?`<button class="btn ghost sm" onclick="Actions.addItem('${p.id}')">+ Add deliverable</button>`:''}
-    </div>
-
-    <div class="card section" style="margin-bottom:22px">
-      ${this.stageTracker(p,!team)}
-      ${team?`<div style="margin-top:18px"><div class="mono" style="color:var(--muted);margin-bottom:8px">Move to stage — client sees this instantly</div>
-        <div class="stagectl">${STAGES.map((s,i)=>`<button class="${i===p.stage?'on':''} ${s==='The Gate'?'gate':''}" onclick="Actions.setStage('${p.id}',${i})">${s}</button>`).join('')}</div></div>`:''}
-    </div>
-
-    <div class="detail-grid">
-      <div class="card section">
-        <h4>📦 Deliverables</h4>
-        <div class="sub">${team?'What the studio is making for this project.':'Approve what you love — request changes on the rest.'}</div>
-        <div id="itemList">${p.items.map(it=>this.itemRow(p,it,team)).join('')||'<p class="mono" style="color:var(--muted)">No deliverables yet.</p>'}</div>
-      </div>
-      <div class="card section thread">
-        <h4>💬 Project thread</h4>
-        <div class="sub">${team?'Talk to '+c.contact+' right here.':'Talk to your Aureo team — they read everything.'}</div>
-        <div class="msgs" id="msgs">${Msg.render(p.id)}</div>
-        <div class="composer">
-          <textarea id="msgIn" placeholder="Write a message…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();Msg.send('${p.id}')}"></textarea>
-          <button class="btn" onclick="Msg.send('${p.id}')">Send</button>
-        </div>
-      </div>
-    </div>`;
-  },
-  itemRow(p,it,team){
-    const map={draft:['✏️ In production','chip'],gate:['🔒 At the human gate','chip gate'],
-      review:['👀 Your review','chip gold'],approved:['✓ Approved','chip done'],changes:['↺ Changes asked','chip']};
-    const [lbl,cls]=map[it.status]||map.draft;
-    const u=me();
-    let action='';
-    if(!team&&it.status==='review'){
-      action=`<div class="approve-row">
-        <button class="btn sm" onclick="Actions.approve('${p.id}','${it.id}')">✓ Approve</button>
-        <button class="btn ghost sm" onclick="Actions.requestChange('${p.id}','${it.id}')">↺ Request change</button></div>`;
-    }
-    return `<div class="item">
-      <div class="ith">${it.emoji||'📄'}</div>
-      <div class="imeta"><b>${it.title}</b><span>${team?'Status set by the studio':'Deliverable'}</span>${action}</div>
-      <div class="istat"><span class="${cls}">${lbl}</span></div>
-    </div>`;
-  },
-  afterProject(id){const m=document.getElementById('msgs');if(m)m.scrollTop=m.scrollHeight;
-    const ta=document.getElementById('msgIn');if(ta)ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px';});}
-};
-
-/* ════════════════ MESSAGES ════════════════ */
-const Msg={
-  render(pid){
-    const list=DB.messages.filter(m=>m.pid===pid).sort((a,b)=>a.at-b.at);
-    const meId=DB.session;
-    if(!DB.reads)DB.reads={};DB.reads[DB.session+'_'+pid]=Date.now();save(DB);
-    if(!list.length)return `<div class="msg sys">This is the start of your project thread.</div>`;
-    return list.map(m=>{
-      if(m.sys)return `<div class="msg sys">${m.text}</div>`;
-      const u=DB.users.find(u=>u.id===m.uid);
-      const mine=m.uid===meId;
-      return `<div class="msg ${mine?'me':'them'}"><div class="mh">${mine?'You':(u?u.name.split(' ')[0]:'—')}<span>${fmt(m.at)}</span></div>${m.text.replace(/</g,'&lt;')}</div>`;
-    }).join('');
-  },
-  send(pid){
-    const ta=document.getElementById('msgIn');const t=ta.value.trim();if(!t)return;
-    DB.messages.push({id:uid('m'),pid,uid:DB.session,text:t,at:Date.now()});save(DB);
-    ta.value='';ta.style.height='auto';
-    document.getElementById('msgs').innerHTML=Msg.render(pid);
-    const m=document.getElementById('msgs');m.scrollTop=m.scrollHeight;
-  },
-  unread(pid){
-    const last=(DB.reads&&DB.reads[DB.session+'_'+pid])||0;
-    return DB.messages.filter(m=>m.pid===pid&&m.uid!==DB.session&&m.at>last&&!m.sys).length;
-  }
-};
-
-/* ════════════════ ACTIONS ════════════════ */
-const Actions={
-  setStage(pid,s){const p=DB.projects.find(p=>p.id===pid);p.stage=s;
-    DB.messages.push({id:uid('m'),pid,sys:true,text:'→ Moved to “'+STAGES[s]+'”',at:Date.now()});
-    if(s===2)p.items.forEach(it=>{if(it.status==='draft')it.status='gate';});
-    if(s===3)p.items.forEach(it=>{if(it.status==='gate')it.status='review';});
-    save(DB);UI.toast('Stage updated — client sees it now');UI.render();},
-  approve(pid,itid){const p=DB.projects.find(p=>p.id===pid);const it=p.items.find(i=>i.id===itid);it.status='approved';
-    DB.messages.push({id:uid('m'),pid,uid:DB.session,text:'✓ Approved “'+it.title+'” — looks great!',at:Date.now()});
-    if(p.items.every(i=>i.status==='approved')){p.stage=4;DB.messages.push({id:uid('m'),pid,sys:true,text:'All deliverables approved — project shipped 🟡',at:Date.now()+1});}
-    save(DB);UI.toast('Approved — thank you!');UI.render();},
-  requestChange(pid,itid){
-    UI.modal(`<h3>Request a change</h3><p class="sub" style="color:var(--muted);font-weight:600;margin:6px 0 8px">Tell the studio exactly what to tweak.</p>
-      <textarea id="chgTxt" rows="4" placeholder="e.g. Use the peach background on slide 4"></textarea>
-      <div style="display:flex;gap:8px;margin-top:16px"><button class="btn wide" onclick="Actions.doChange('${pid}','${itid}')">Send request</button>
-      <button class="btn ghost" onclick="UI.closeModal()">Cancel</button></div>`);
-  },
-  doChange(pid,itid){const t=document.getElementById('chgTxt').value.trim();const p=DB.projects.find(p=>p.id===pid);const it=p.items.find(i=>i.id===itid);
-    it.status='changes';
-    DB.messages.push({id:uid('m'),pid,uid:DB.session,text:'↺ Change on “'+it.title+'”: '+(t||'please revise'),at:Date.now()});
-    save(DB);UI.closeModal();UI.toast('Sent to the studio');UI.render();},
-  newProject(){
-    const opts=DB.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-    UI.modal(`<h3>New project</h3>
-      <label>Client</label><select id="npClient">${opts}</select>
-      <label>Project title</label><input id="npTitle" placeholder="e.g. May Reels Engine">
-      <label>Type / scope</label><input id="npType" placeholder="e.g. 8 reels · monthly">
-      <div style="display:flex;gap:8px;margin-top:18px"><button class="btn wide" onclick="Actions.doNewProject()">Create project</button>
-      <button class="btn ghost" onclick="UI.closeModal()">Cancel</button></div>`);
-  },
-  doNewProject(){const cid=document.getElementById('npClient').value;const t=document.getElementById('npTitle').value.trim();const ty=document.getElementById('npType').value.trim();
-    if(!t){UI.toast('Give it a title');return;}
-    const p={id:uid('p'),clientId:cid,title:t,type:ty||'Project',stage:0,created:Date.now(),items:[]};
-    DB.projects.push(p);save(DB);UI.closeModal();UI.toast('Project created');ROUTE.go('project',p.id);},
-  addItem(pid){
-    UI.modal(`<h3>Add deliverable</h3>
-      <label>Title</label><input id="aiTitle" placeholder="e.g. Reel 03 — testimonial">
-      <label>Emoji (optional)</label><input id="aiEmoji" placeholder="🎬" maxlength="4">
-      <div style="display:flex;gap:8px;margin-top:18px"><button class="btn wide" onclick="Actions.doAddItem('${pid}')">Add</button>
-      <button class="btn ghost" onclick="UI.closeModal()">Cancel</button></div>`);
-  },
-  doAddItem(pid){const p=DB.projects.find(p=>p.id===pid);const t=document.getElementById('aiTitle').value.trim();if(!t){UI.toast('Give it a title');return;}
-    const e=document.getElementById('aiEmoji').value.trim();
-    const st=p.stage>=3?'review':p.stage===2?'gate':'draft';
-    p.items.push({id:uid('it'),title:t,emoji:e||'📄',status:st});save(DB);UI.closeModal();UI.render();}
-};
-
-/* ════════════════ BOOT ════════════════ */
-if(DB.session&&me())UI.enter();else UI.boot();
+/* ---------- wire + boot ---------- */
+$('#liBtn').addEventListener('click',login);
+$('#liPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('#logoutBtn').addEventListener('click',async()=>{ if(msgChannel)sb.removeChannel(msgChannel); await sb.auth.signOut(); showLogin(); });
+boot();
 </script>
 </body>
 </html>
