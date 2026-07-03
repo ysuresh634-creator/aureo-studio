@@ -406,7 +406,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null, FOLLOWUPS=null;
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null, FOLLOWUPS=null, ACT=null;
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -419,7 +419,7 @@ async function boot(){
   try{
     const {data:{session}}=await sb.auth.getSession();
     if(session&&INVITE) showSetPw();
-    else if(session) await enter();
+    else if(session) await enter(session.user);
     else showLogin();
   }catch(e){ showLogin(); }
   sb.auth.onAuthStateChange((e,s)=>{ if(e==='PASSWORD_RECOVERY') showSetPw(); else if(!s){ ME=null; showLogin(); } });
@@ -429,10 +429,10 @@ function showSetPw(){ $('#authWrap').classList.add('hide'); $('#setpwWrap').clas
 async function login(){
   const email=$('#liEmail').value.trim(), pass=$('#liPass').value;
   $('#liErr').textContent=''; $('#liBtn').disabled=true; $('#liBtn').textContent='Signing in…';
-  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
   $('#liBtn').disabled=false; $('#liBtn').textContent='Log in →';
   if(error){ $('#liErr').textContent=/invalid/i.test(error.message)?'Wrong email or password. Try the code option below.':error.message; return; }
-  await enter();
+  await enter(data.user);
 }
 async function forgotPw(){
   const email=$('#liEmail').value.trim();
@@ -451,8 +451,8 @@ async function setPw(){
   if(error && !/different from the old/i.test(error.message)){ $('#spErr').textContent=error.message; return; }
   history.replaceState(null,'',location.pathname); await enter();
 }
-async function enter(){
-  const {data:{user}}=await sb.auth.getUser(); if(!user) return showLogin();
+async function enter(preUser){
+  let user=preUser; if(!user){ const {data}=await sb.auth.getUser(); user=data.user; } if(!user) return showLogin();
   let prof=null, cls=[];
   try{
     const [pr,cl]=await Promise.all([
@@ -535,8 +535,8 @@ async function vTeamHome(){
   const attn=ps.filter(p=>p.stage===3);
   const od=ps.filter(p=>{const d=dueMeta(p);return d&&d.rank===0;});
   const soon=ps.filter(p=>{const d=dueMeta(p);return d&&d.rank===1;});
-  const {data:recent}=await sb.from('messages').select('*').order('created_at',{ascending:false}).limit(6);
-  let MM={invoices:[],payouts:[],txns:[],budgets:[],fin:{},recurring:[],accounts:[]}; try{ MM=await loadMoney(); }catch(e){}
+  let recent=ACT||[]; if(!ACT){ sb.from('messages').select('*').order('created_at',{ascending:false}).limit(6).then(r=>{ ACT=r.data||[]; if(view.v==='home'&&ME&&ME.role==='team') vTeamHome(); }).catch(()=>{}); }
+  let MM=MONEY||{invoices:[],payouts:[],txns:[],budgets:[],fin:{},recurring:[],accounts:[]}; if(!MONEY){ loadMoney().then(()=>{ if(view.v==='home'&&ME&&ME.role==='team') vTeamHome(); }).catch(()=>{}); }
   const _td=today10();
   const mPendingIn=MM.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+Number(i.amount||0),0);
   const mSpent=MM.txns.filter(t=>t.direction==='out'&&inMonth(t.txn_date)).reduce((s,t)=>s+Number(t.amount||0),0);
