@@ -318,6 +318,7 @@ const ICON={
   clients:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S13.9 16 14.5 19M16 6.2A3 3 0 0 1 16 12M18 19c-.3-1.9-1-3.2-2-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   pipeline:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="5" height="16" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="4" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="17" y="4" width="4" height="7" rx="1.5" stroke="currentColor" stroke-width="2.2"/></svg>',
   msg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4V5z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+  inbox:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13l3-8h12l3 8v6H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 13h5l1.5 2.5h5L16 13h5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   folder:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6.5h6l2 2.5h10V19H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#8a857c" stroke-width="2.2"/><path d="m20 20-3.5-3.5" stroke="#8a857c" stroke-width="2.2" stroke-linecap="round"/></svg>',
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
@@ -382,7 +383,7 @@ async function enter(){
 }
 function buildNav(){
   const items = ME.role==='team'
-    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['msgs','Messages',ICON.msg]]
+    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['msgs','Messages',ICON.msg]]
     : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
     + (ME.role==='team'?`<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`:'');
@@ -399,6 +400,7 @@ async function render(){
     else if(view.v==='client'&&ME.role==='team') await vClientDetail(view.arg);
     else if(view.v==='clients'&&ME.role==='team') await vClients();
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
+    else if(view.v==='inbox'&&ME.role==='team') await vInbox();
     else if(view.v==='msgs') await vMessages();
     else if(ME.role==='team') await vTeamHome();
     else await vClientHome();
@@ -517,6 +519,30 @@ async function vMessages(){
     <div style="flex:1;min-width:0"><b style="font-size:14px">${esc(p.title)}</b><br><span class="muted" style="font-size:12px">${esc((last.body||'').slice(0,50))}</span></div>
     <span class="tiny muted">${fmt(last.created_at)}</span></div></div>`}).join('')}</div>`:emptyState('No messages yet','Open a project to start a conversation.','')}`;
 }
+
+async function vInbox(){
+  const {data:f}=await sb.from('followups').select('*').order('received_at',{ascending:false});
+  const rows=f||[];
+  const groups=[['todo','To follow up',rows.filter(r=>r.status==='todo')],['waiting','Waiting on them',rows.filter(r=>r.status==='waiting')],['done','Done / ignored',rows.filter(r=>r.status==='done'||r.status==='ignore')]];
+  const LBL={todo:'To follow up',waiting:'Waiting',done:'Done',ignore:'Ignore'};
+  const card=r=>`<div class="win" style="margin-bottom:10px"><div class="win-body" style="padding:14px 16px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div style="min-width:0"><b style="font-size:15px">${esc(r.subject||'(no subject)')}</b>
+        <div class="muted" style="font-size:12px;margin-top:2px">${esc(r.from_email||'')}${r.received_at?' · '+fmt(r.received_at):''}</div>
+        <div style="font-size:13px;margin-top:6px;color:var(--sec);font-family:var(--sans)">${esc((r.snippet||'').slice(0,150))}</div></div>
+      ${r.gmail_url?`<a class="btn ghost sm" href="${esc(r.gmail_url)}" target="_blank" rel="noopener" style="flex:none">Open ↗</a>`:''}
+    </div>
+    <div class="stagectl" style="margin-top:12px">
+      ${['todo','waiting','done','ignore'].map(s=>`<button class="${r.status===s?'on':''}" onclick="setFollowup('${r.id}','${s}')">${LBL[s]}</button>`).join('')}
+      <button class="iconbtn" style="width:32px;height:32px" onclick="delFollowup('${r.id}')">×</button>
+    </div></div></div>`;
+  $('#view').innerHTML=`
+  <div class="page-h"><div class="eyebrow">Inbox · Gmail follow-ups</div><h1>Who needs a reply.</h1></div>
+  ${rows.length?groups.filter(g=>g[2].length).map(([k,label,list])=>`<div class="tiny muted" style="margin:${k==='todo'?'0':'20px'} 0 8px">${label} · ${list.length}</div>${list.map(card).join('')}`).join('')
+    :emptyState('Inbox zero','Real emails that need a reply land here — pulled from Gmail every 30 min. Nothing to follow up on right now.','')}`;
+}
+async function setFollowup(id,status){ await sb.from('followups').update({status}).eq('id',id); render(); }
+async function delFollowup(id){ await sb.from('followups').delete().eq('id',id); render(); }
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
