@@ -320,6 +320,7 @@ const ICON={
   msg:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4V5z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   inbox:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13l3-8h12l3 8v6H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 13h5l1.5 2.5h5L16 13h5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   folder:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6.5h6l2 2.5h10V19H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+  briefcase:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="7.5" width="18" height="12.5" rx="2" stroke="currentColor" stroke-width="2.2"/><path d="M8 7.5V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7.5M3 12.5h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#8a857c" stroke-width="2.2"/><path d="m20 20-3.5-3.5" stroke="#8a857c" stroke-width="2.2" stroke-linecap="round"/></svg>',
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
@@ -383,7 +384,7 @@ async function enter(){
 }
 function buildNav(){
   const items = ME.role==='team'
-    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['msgs','Messages',ICON.msg]]
+    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['msgs','Messages',ICON.msg]]
     : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
     + (ME.role==='team'?`<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`:'');
@@ -401,6 +402,7 @@ async function render(){
     else if(view.v==='clients'&&ME.role==='team') await vClients();
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
     else if(view.v==='inbox'&&ME.role==='team') await vInbox();
+    else if(view.v==='jobs'&&ME.role==='team') await vJobs();
     else if(view.v==='msgs') await vMessages();
     else if(ME.role==='team') await vTeamHome();
     else await vClientHome();
@@ -543,6 +545,47 @@ async function vInbox(){
 }
 async function setFollowup(id,status){ await sb.from('followups').update({status}).eq('id',id); render(); }
 async function delFollowup(id){ await sb.from('followups').delete().eq('id',id); render(); }
+
+/* ---------- JOBS (private job hunt) ---------- */
+const JSTAGES=['applied','screening','interview','offer','rejected'];
+const JLBL={applied:'Applied',screening:'Screening',interview:'Interview',offer:'Offer',rejected:'Rejected'};
+async function loadJobs(){ const {data}=await sb.from('jobs').select('*').order('created_at',{ascending:false}); return data||[]; }
+async function vJobs(){
+  const js=await loadJobs();
+  $('#view').innerHTML=`
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search roles & companies…" oninput="SEARCH=this.value;filterJobs()" value="${esc(SEARCH)}"></div><button class="btn" onclick="newJob()">+ Track a job</button></div>
+  <div class="page-h"><div class="eyebrow">Jobs · my search</div><h1>Land the next one.</h1></div>
+  <div class="stats">
+   ${stat(js.length,'Tracked','gold')}
+   ${stat(js.filter(j=>j.status==='applied').length,'Applied')}
+   ${stat(js.filter(j=>j.status==='interview').length,'Interviewing','ink')}
+   ${stat(js.filter(j=>j.status==='offer').length,'Offers')}
+   ${stat(js.filter(j=>j.status==='rejected').length,'Closed')}
+  </div>
+  <div id="jobsKb">${js.length?jobsBoard(js):emptyState('No jobs tracked yet','Add a role you’ve applied to (or want to) and move it Applied → Offer as you go.','<button class="btn" onclick="newJob()">+ Track a job</button>')}</div>`;
+}
+function jobsBoard(js){
+  const q=SEARCH.toLowerCase();
+  const f=js.filter(j=>!q||(j.role||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q));
+  return `<div class="kb">${JSTAGES.map((s,si)=>{const col=f.filter(j=>j.status===s);return `
+   <div class="kbcol ${s==='offer'?'gate':''}"><div class="h"><span>${JLBL[s]}</span><span class="c">${col.length}</span></div>
+    <div class="body">${col.map(j=>{const pr=j.priority==='high'?'<span class="chip warn" style="margin-top:8px">★ DREAM</span>':'';return `
+     <div class="kbcard" onclick="editJob('${j.id}')">
+      <h4>${esc(j.role||'Role')}</h4><div class="m">${esc(j.company||'—')}${j.location?' · '+esc(j.location):''}</div>${pr}
+      ${j.link?`<a href="${esc(j.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="tiny" style="color:var(--blue);display:inline-block;margin-top:6px">Open posting ↗</a>`:''}
+      <div class="mv" onclick="event.stopPropagation()">
+       <button ${si===0?'disabled':''} onclick="moveJob('${j.id}','${JSTAGES[si-1]}')">‹</button>
+       <button ${si===JSTAGES.length-1?'disabled':''} onclick="moveJob('${j.id}','${JSTAGES[si+1]}')">›</button></div></div>`}).join('')||'<div class="muted" style="font-size:11px;padding:6px">—</div>'}</div></div>`}).join('')}</div>`;
+}
+window.filterJobs=function(){ const box=$('#jobsKb'); if(box) loadJobs().then(js=>{ box.innerHTML=js.length?jobsBoard(js):emptyState('No jobs tracked yet','Add a role to get started.',''); }); };
+window.moveJob=async function(id,status){ await sb.from('jobs').update({status}).eq('id',id); toast('Moved to '+JLBL[status]); vJobs(); };
+const jobForm=j=>`<label>Role / title</label><input id="jR" value="${esc(j.role||'')}" placeholder="Senior Video Editor"><label>Company</label><input id="jC" value="${esc(j.company||'')}" placeholder="Ogilvy"><div class="two"><div><label>Location</label><input id="jL" value="${esc(j.location||'')}" placeholder="London / Remote"></div><div><label>Status</label><select id="jS">${JSTAGES.map(s=>`<option value="${s}" ${j.status===s?'selected':''}>${JLBL[s]}</option>`).join('')}</select></div></div><label>Job link</label><input id="jU" value="${esc(j.link||'')}" placeholder="https://"><div class="two"><div><label>Applied on</label><input id="jD" type="date" value="${j.applied_at||''}"></div><div><label>Priority</label><select id="jP"><option value="normal" ${j.priority!=='high'?'selected':''}>Normal</option><option value="high" ${j.priority==='high'?'selected':''}>★ Dream role</option></select></div></div><label>Notes</label><textarea id="jN" rows="3" placeholder="Recruiter name, referral, next step, salary…">${esc(j.notes||'')}</textarea>`;
+function readJob(){ return {role:$('#jR').value.trim(),company:$('#jC').value.trim(),location:$('#jL').value.trim(),status:$('#jS').value,link:$('#jU').value.trim(),applied_at:$('#jD').value||null,priority:$('#jP').value,notes:$('#jN').value.trim()}; }
+function newJob(){ modal('Track a job',jobForm({})+`<button class="btn wide" style="margin-top:14px" onclick="doNewJob()">Add to tracker</button>`); }
+async function doNewJob(){ const j=readJob(); if(!j.role){toast('Give it a role');return;} const {error}=await sb.from('jobs').insert(j); if(error){toast(error.message);return;} closeModal(); toast('Job tracked'); vJobs(); }
+function editJob(id){ sb.from('jobs').select('*').eq('id',id).single().then(({data:j})=>{ modal('Edit job',jobForm(j)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="doEditJob('${id}')">Save</button><button class="btn ghost" onclick="delJob('${id}')">Delete</button></div>`); }); }
+async function doEditJob(id){ const {error}=await sb.from('jobs').update(readJob()).eq('id',id); if(error){toast(error.message);return;} closeModal(); toast('Saved'); vJobs(); }
+async function delJob(id){ await sb.from('jobs').delete().eq('id',id); closeModal(); toast('Removed'); vJobs(); }
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
