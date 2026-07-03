@@ -655,7 +655,7 @@ async function vMoney(){
       <div style="display:flex;justify-content:space-between"><span class="muted">Gross income</span><b>${inr(fyIncome)}</b></div>
       <div style="display:flex;justify-content:space-between"><span class="muted">Business expenses (deductible)</span><b>−${inr(fyDeduct)}</b></div>
       <div style="display:flex;justify-content:space-between;border-top:1.5px solid var(--line);padding-top:7px;margin-top:5px"><b>Net taxable</b><b style="font-size:16px">${inr(fyIncome-fyDeduct)}</b></div></div>
-      <div class="tiny muted" style="margin-top:10px">All-in billing — no GST. Mark freelancer / tools / gear spends as <b>deductible</b> to keep this ITR-ready. India FY = Apr–Mar.</div>`)}
+      <div class="tiny muted" style="margin-top:10px">All-in billing — no GST. Mark freelancer / tools / gear spends as <b>deductible</b> to keep this ITR-ready. India FY = Apr–Mar.</div><button class="btn ghost sm wide" style="margin-top:12px" onclick="exportCA()">⬇ Export FY for CA (CSV)</button>`)}
     ${winWrap('RECENT LEDGER', (txns.length?txns.slice(0,14).map(t=>`<div style="${MR}"><div style="flex:1;min-width:0"><b>${t.direction==='in'?'▲':'▼'} ${esc(t.category||'—')}</b><div class="tiny muted">${fmtd(t.txn_date)}${t.note?' · '+esc(t.note):''}${t.deductible?' · <span style="color:var(--ok)">deductible</span>':''}</div></div><div style="font-weight:700;color:${t.direction==='in'?'var(--ok)':'var(--ink)'}">${t.direction==='in'?'+':'−'}${inr(t.amount)}</div><button class="iconbtn" style="width:26px;height:26px" onclick="delRow('transactions','${t.id}')">×</button></div>`).join(''):'<div class="muted" style="font-size:13px">No transactions yet. Marking an invoice or payout paid auto-logs it here.</div>'))}
    </div>
   </div>`;
@@ -672,6 +672,41 @@ async function doNewTxn(dir){ const a=parseFloat($('#txA').value); if(!a){toast(
 async function setBudget(){ const {data:b}=await sb.from('budgets').select('*'); const cats=['Freelancer','Tools/Software','Gear','Travel','Food','Subscriptions','Personal']; const cur=Object.fromEntries((b||[]).map(x=>[x.category,x.monthly_limit])); window.__budCats=cats; modal('Monthly budgets',`<div class="tiny muted" style="margin-bottom:8px">Set a monthly cap per category — you'll get an overspend warning when you cross it.</div>`+cats.map((c,ix)=>`<label>${c} (₹/mo)</label><input id="bud_${ix}" type="number" value="${cur[c]||''}" placeholder="e.g. 10000">`).join('')+`<button class="btn wide" style="margin-top:14px" onclick="doSetBudget()">Save budgets</button>`); }
 async function doSetBudget(){ const cats=window.__budCats||[]; const rows=cats.map((c,ix)=>({category:c,monthly_limit:parseFloat($('#bud_'+ix).value)||0})).filter(r=>r.monthly_limit>0); if(rows.length) await sb.from('budgets').upsert(rows); closeModal(); toast('Budgets saved'); vMoney(); }
 async function delRow(table,id){ await sb.from(table).delete().eq('id',id); vMoney(); }
+async function exportCA(){
+  const {invoices,payouts,txns}=await loadMoney();
+  const curFY=fyOf(today10());
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const inFY=d=>d&&fyOf(d)===curFY;
+  const led=txns.filter(t=>inFY(t.txn_date)).sort((a,b)=>String(a.txn_date).localeCompare(String(b.txn_date)));
+  const income=led.filter(t=>t.direction==='in').reduce((s,t)=>s+Number(t.amount||0),0);
+  const deduct=led.filter(t=>t.direction==='out'&&t.deductible).reduce((s,t)=>s+Number(t.amount||0),0);
+  const totExp=led.filter(t=>t.direction==='out').reduce((s,t)=>s+Number(t.amount||0),0);
+  const L=[];
+  L.push(q('Aureo Studio - FY '+curFY+'-'+(curFY+1)+' (Apr-Mar) - for ITR filing'));
+  L.push(q('All amounts INR. Not GST-registered - all-in billing, no GST.'));
+  L.push('');
+  L.push([q('Gross income (received)'),income].join(','));
+  L.push([q('Deductible business expenses'),deduct].join(','));
+  L.push([q('Net taxable (income minus deductible)'),income-deduct].join(','));
+  L.push([q('Total expenses incl. personal'),totExp].join(','));
+  L.push('');
+  L.push(q('LEDGER - money in and out'));
+  L.push(['Date','Type','Category','Deductible','Amount (INR)','Note'].map(q).join(','));
+  led.forEach(t=>L.push([q(t.txn_date),q(t.direction==='in'?'Income':'Expense'),q(t.category||''),q(t.deductible?'Yes':'No'),Number(t.amount||0),q(t.note||'')].join(',')));
+  L.push('');
+  L.push(q('INVOICES - client billing (incl. outstanding)'));
+  L.push(['Issued','Due','Client','Description','Amount (INR)','Status'].map(q).join(','));
+  invoices.filter(i=>inFY(i.issued_at||i.created_at)).forEach(i=>{const c=CLIENTS[i.client_id];L.push([q(i.issued_at||''),q(i.due_date||''),q(c?c.name:''),q(i.description||''),Number(i.amount||0),q(i.status)].join(','));});
+  L.push('');
+  L.push(q('FREELANCER PAYOUTS - business expense'));
+  L.push(['Due','Freelancer','For','Amount (INR)','Status'].map(q).join(','));
+  payouts.forEach(p=>L.push([q(p.due_date||''),q(p.freelancer),q(p.description||''),Number(p.amount||0),q(p.status)].join(',')));
+  const csv='﻿'+L.join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='Aureo-FY'+curFY+'-'+(curFY+1)+'-for-CA.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Downloaded — ready to send to your CA');
+}
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
