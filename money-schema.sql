@@ -57,6 +57,11 @@ create table if not exists public.fin_settings (
   opening_balance numeric default 0,          -- your current total balance across accounts (reconcile anytime)
   monthly_savings_target numeric default 0,   -- pay-yourself-first amount per month
   tax_reserve_pct numeric default 0,          -- % of income to hold back for ITR/tax
+  upi_id text,                                -- your UPI VPA (e.g. yedukrishna@okhdfcbank) for pay links + QR
+  payee_name text,                            -- name shown in the UPI app when a client pays
+  bank_name text,                             -- bank name (fallback for large transfers)
+  bank_account text,                          -- account number
+  bank_ifsc text,                             -- IFSC code
   updated_at timestamptz default now(),
   constraint fin_singleton check (id)
 );
