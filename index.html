@@ -323,6 +323,7 @@ const ICON={
   inbox:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13l3-8h12l3 8v6H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 13h5l1.5 2.5h5L16 13h5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   folder:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 6.5h6l2 2.5h10V19H3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   briefcase:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="7.5" width="18" height="12.5" rx="2" stroke="currentColor" stroke-width="2.2"/><path d="M8 7.5V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7.5M3 12.5h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  money:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/><path d="M9 8.2h6M9 11h6M13.5 8.2c1.2 0 1.2 3.4-1.7 3.4H9.5l4 4.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#8a857c" stroke-width="2.2"/><path d="m20 20-3.5-3.5" stroke="#8a857c" stroke-width="2.2" stroke-linecap="round"/></svg>',
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
@@ -393,7 +394,7 @@ async function enter(){
 }
 function buildNav(){
   const items = ME.role==='team'
-    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['msgs','Messages',ICON.msg]]
+    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]]
     : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
     + (ME.role==='team'?`<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`:'');
@@ -412,6 +413,7 @@ async function render(){
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
     else if(view.v==='inbox'&&ME.role==='team') await vInbox();
     else if(view.v==='jobs'&&ME.role==='team') await vJobs();
+    else if(view.v==='money'&&ME.role==='team') await vMoney();
     else if(view.v==='msgs') await vMessages();
     else if(ME.role==='team') await vTeamHome();
     else await vClientHome();
@@ -597,6 +599,79 @@ async function doNewJob(){ const j=readJob(); if(!j.role){toast('Give it a role'
 function editJob(id){ sb.from('jobs').select('*').eq('id',id).single().then(({data:j})=>{ modal('Edit job',jobForm(j)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="doEditJob('${id}')">Save</button><button class="btn ghost" onclick="delJob('${id}')">Delete</button></div>`); }); }
 async function doEditJob(id){ const {error}=await sb.from('jobs').update(readJob()).eq('id',id); if(error){toast(error.message);return;} closeModal(); toast('Saved'); vJobs(); }
 async function delJob(id){ await sb.from('jobs').delete().eq('id',id); closeModal(); toast('Removed'); vJobs(); }
+
+/* ---------- MONEY (private finance + ITR) ---------- */
+const inr = n => '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+const fmtd = d => d?new Date(d).toLocaleDateString([], {day:'numeric',month:'short'}):'';
+const inMonth = d => { if(!d)return false; const x=new Date(d),n=new Date(); return x.getFullYear()===n.getFullYear()&&x.getMonth()===n.getMonth(); };
+const fyOf = d => { const x=new Date(d); return x.getMonth()>=3 ? x.getFullYear() : x.getFullYear()-1; }; // India FY starts April
+const today10 = () => new Date().toISOString().slice(0,10);
+async function loadMoney(){
+  const [inv,pay,txn,bud]=await Promise.all([
+    sb.from('invoices').select('*').order('due_date',{ascending:true}),
+    sb.from('payouts').select('*').order('due_date',{ascending:true}),
+    sb.from('transactions').select('*').order('txn_date',{ascending:false}),
+    sb.from('budgets').select('*')
+  ]);
+  return {invoices:inv.data||[], payouts:pay.data||[], txns:txn.data||[], budgets:bud.data||[]};
+}
+async function vMoney(){
+  const {invoices,payouts,txns,budgets}=await loadMoney();
+  const today=today10(), curFY=fyOf(today);
+  const openInv=invoices.filter(i=>i.status!=='paid');
+  const pendingIn=openInv.reduce((s,i)=>s+Number(i.amount||0),0);
+  const overdue=openInv.filter(i=>i.due_date&&i.due_date<today);
+  const toPay=payouts.filter(p=>p.status!=='paid').reduce((s,p)=>s+Number(p.amount||0),0);
+  const mIn=txns.filter(t=>t.direction==='in'&&inMonth(t.txn_date)).reduce((s,t)=>s+Number(t.amount||0),0);
+  const mOut=txns.filter(t=>t.direction==='out'&&inMonth(t.txn_date)).reduce((s,t)=>s+Number(t.amount||0),0);
+  const fyTx=txns.filter(t=>fyOf(t.txn_date)===curFY);
+  const fyIncome=fyTx.filter(t=>t.direction==='in').reduce((s,t)=>s+Number(t.amount||0),0);
+  const fyDeduct=fyTx.filter(t=>t.direction==='out'&&t.deductible).reduce((s,t)=>s+Number(t.amount||0),0);
+  const catSpend={}; txns.filter(t=>t.direction==='out'&&inMonth(t.txn_date)).forEach(t=>{const c=t.category||'Uncategorised'; catSpend[c]=(catSpend[c]||0)+Number(t.amount||0);});
+  const budMap=Object.fromEntries(budgets.map(b=>[b.category,Number(b.monthly_limit)]));
+  const alerts=Object.keys(budMap).map(c=>({c,spent:catSpend[c]||0,limit:budMap[c]})).filter(x=>x.limit>0&&x.spent>x.limit);
+  const MR='display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1.5px solid var(--line)';
+  const acts=(fn,id,tbl,paid)=>`<div style="display:flex;gap:6px;align-items:center">${!paid?`<button class="btn ghost sm" onclick="${fn}('${id}')">✓ Paid</button>`:''}<button class="iconbtn" style="width:28px;height:28px" onclick="delRow('${tbl}','${id}')">×</button></div>`;
+  const invRow=i=>{const c=CLIENTS[i.client_id]; const od=i.status!=='paid'&&i.due_date&&i.due_date<today; return `<div style="${MR}"><div style="flex:1;min-width:0"><b>${esc(i.description||(c?c.name:'Invoice'))}</b><div class="tiny muted">${c?esc(c.name)+' · ':''}${i.due_date?'due '+fmtd(i.due_date):'no due date'}</div></div><div style="font-weight:700">${inr(i.amount)}</div><span class="chip ${i.status==='paid'?'ok':od?'warn':''}">${i.status==='paid'?'PAID':od?'OVERDUE':'PENDING'}</span>${acts('payInvoice',i.id,'invoices',i.status==='paid')}</div>`;};
+  const payRow=p=>{const od=p.status!=='paid'&&p.due_date&&p.due_date<today; return `<div style="${MR}"><div style="flex:1;min-width:0"><b>${esc(p.freelancer)}</b><div class="tiny muted">${esc(p.description||'')}${p.due_date?' · due '+fmtd(p.due_date):''}</div></div><div style="font-weight:700">${inr(p.amount)}</div><span class="chip ${p.status==='paid'?'ok':od?'warn':''}">${p.status==='paid'?'PAID':od?'OVERDUE':'TO PAY'}</span>${acts('payPayout',p.id,'payouts',p.status==='paid')}</div>`;};
+  const net=mIn-mOut;
+  $('#view').innerHTML=`
+  <div class="page-h"><div class="eyebrow">Money · private to you</div><h1>Every rupee, tracked.</h1></div>
+  <div class="stats">
+   ${stat(inr(pendingIn),'Incoming pending','gold')}
+   ${stat(overdue.length,'Overdue','ink')}
+   ${stat(inr(toPay),'Freelancers to pay')}
+   ${stat((net>=0?'+':'−')+inr(Math.abs(net)),'This month net')}
+  </div>
+  ${alerts.length?`<div class="attn" style="border-color:var(--warn)">${ICON.clock}<div><b>Overspending:</b> ${alerts.map(a=>`${esc(a.c)} ${inr(a.spent)}/${inr(a.limit)}`).join(' · ')} — rein it in.</div></div>`:''}
+  <div class="detail-grid">
+   <div style="display:flex;flex-direction:column;gap:18px">
+    ${winWrap('CLIENT PAYMENTS · money in', (invoices.length?invoices.map(invRow).join(''):'<div class="muted" style="font-size:13px">No invoices yet.</div>')+`<button class="btn ghost sm wide" style="margin-top:12px" onclick="newInvoice()">+ Add invoice</button>`)}
+    ${winWrap('FREELANCER PAYOUTS · money out', (payouts.length?payouts.map(payRow).join(''):'<div class="muted" style="font-size:13px">No payouts yet.</div>')+`<button class="btn ghost sm wide" style="margin-top:12px" onclick="newPayout()">+ Add payout</button>`)}
+    ${winWrap('SPENDING THIS MONTH', (Object.keys(catSpend).length?Object.entries(catSpend).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const lim=budMap[c];const pct=lim?Math.min(100,Math.round(v/lim*100)):0;return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(c)}</span><span style="${lim&&v>lim?'color:var(--warn);font-weight:700':'color:var(--muted)'}">${inr(v)}${lim?' / '+inr(lim):''}</span></div>${lim?`<div class="pbar" style="margin-top:4px"><i class="on" style="width:${pct}%;background:${v>lim?'var(--warn)':'var(--gold)'}"></i></div>`:''}</div>`}).join(''):'<div class="muted" style="font-size:13px">Nothing logged this month.</div>')+`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn ghost sm" style="flex:1" onclick="newTxn('out')">+ Expense</button><button class="btn ghost sm" style="flex:1" onclick="newTxn('in')">+ Income</button><button class="btn ghost sm" onclick="setBudget()">Budgets</button></div>`)}
+   </div>
+   <div style="display:flex;flex-direction:column;gap:18px">
+    ${winWrap('ITR · FY '+curFY+'–'+String(curFY+1).slice(2), `<div style="font-size:13px;line-height:2.1">
+      <div style="display:flex;justify-content:space-between"><span class="muted">Gross income</span><b>${inr(fyIncome)}</b></div>
+      <div style="display:flex;justify-content:space-between"><span class="muted">Business expenses (deductible)</span><b>−${inr(fyDeduct)}</b></div>
+      <div style="display:flex;justify-content:space-between;border-top:1.5px solid var(--line);padding-top:7px;margin-top:5px"><b>Net taxable</b><b style="font-size:16px">${inr(fyIncome-fyDeduct)}</b></div></div>
+      <div class="tiny muted" style="margin-top:10px">All-in billing — no GST. Mark freelancer / tools / gear spends as <b>deductible</b> to keep this ITR-ready. India FY = Apr–Mar.</div>`)}
+    ${winWrap('RECENT LEDGER', (txns.length?txns.slice(0,14).map(t=>`<div style="${MR}"><div style="flex:1;min-width:0"><b>${t.direction==='in'?'▲':'▼'} ${esc(t.category||'—')}</b><div class="tiny muted">${fmtd(t.txn_date)}${t.note?' · '+esc(t.note):''}${t.deductible?' · <span style="color:var(--ok)">deductible</span>':''}</div></div><div style="font-weight:700;color:${t.direction==='in'?'var(--ok)':'var(--ink)'}">${t.direction==='in'?'+':'−'}${inr(t.amount)}</div><button class="iconbtn" style="width:26px;height:26px" onclick="delRow('transactions','${t.id}')">×</button></div>`).join(''):'<div class="muted" style="font-size:13px">No transactions yet. Marking an invoice or payout paid auto-logs it here.</div>'))}
+   </div>
+  </div>`;
+}
+function newInvoice(){ const opts=Object.values(CLIENTS).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  modal('Add invoice',`<label>Client</label><select id="ivC"><option value="">— none —</option>${opts}</select><label>Amount (₹, all-in — no GST)</label><input id="ivA" type="number" inputmode="numeric" placeholder="85000"><label>Description</label><input id="ivD" placeholder="June UGC retainer"><div class="two"><div><label>Issued</label><input id="ivI" type="date" value="${today10()}"></div><div><label>Due date</label><input id="ivU" type="date"></div></div><button class="btn wide" style="margin-top:14px" onclick="doNewInvoice()">Add invoice</button>`); }
+async function doNewInvoice(){ const a=parseFloat($('#ivA').value); if(!a){toast('Enter an amount');return;} const {error}=await sb.from('invoices').insert({client_id:$('#ivC').value||null,amount:a,description:$('#ivD').value.trim(),issued_at:$('#ivI').value||null,due_date:$('#ivU').value||null,status:'pending'}); if(error){toast(error.message);return;} closeModal(); toast('Invoice added'); vMoney(); }
+async function payInvoice(id){ const {data:i}=await sb.from('invoices').select('*').eq('id',id).single(); const t=today10(); await sb.from('invoices').update({status:'paid',paid_at:t}).eq('id',id); const c=CLIENTS[i.client_id]; await sb.from('transactions').insert({txn_date:t,direction:'in',amount:i.amount,category:'Client payment',note:(c?c.name+' — ':'')+(i.description||''),deductible:false}); toast('Marked paid + logged to ledger'); vMoney(); }
+function newPayout(){ modal('Add freelancer payout',`<label>Freelancer</label><input id="pyF" placeholder="Editor name (private — clients never see this)"><label>Amount (₹)</label><input id="pyA" type="number" placeholder="6000"><label>For / description</label><input id="pyD" placeholder="Reel 03 edit"><label>Due date</label><input id="pyU" type="date"><button class="btn wide" style="margin-top:14px" onclick="doNewPayout()">Add payout</button>`); }
+async function doNewPayout(){ const f=$('#pyF').value.trim(),a=parseFloat($('#pyA').value); if(!f||!a){toast('Freelancer + amount needed');return;} const {error}=await sb.from('payouts').insert({freelancer:f,amount:a,description:$('#pyD').value.trim(),due_date:$('#pyU').value||null,status:'pending'}); if(error){toast(error.message);return;} closeModal(); toast('Payout added'); vMoney(); }
+async function payPayout(id){ const {data:p}=await sb.from('payouts').select('*').eq('id',id).single(); const t=today10(); await sb.from('payouts').update({status:'paid',paid_at:t}).eq('id',id); await sb.from('transactions').insert({txn_date:t,direction:'out',amount:p.amount,category:'Freelancer',note:p.freelancer+(p.description?' — '+p.description:''),deductible:true}); toast('Paid + logged (deductible)'); vMoney(); }
+function newTxn(dir){ const cats=dir==='in'?['Client payment','Other income']:['Freelancer','Tools/Software','Gear','Travel','Food','Subscriptions','Personal','Other']; modal(dir==='in'?'Add income':'Add expense',`<label>Amount (₹)</label><input id="txA" type="number" placeholder="1200"><label>Category</label><select id="txC">${cats.map(c=>`<option>${c}</option>`).join('')}</select><label>Note</label><input id="txN" placeholder="what for"><div class="two"><div><label>Date</label><input id="txD" type="date" value="${today10()}"></div>${dir==='out'?`<div><label>Type</label><select id="txDed"><option value="no">Personal</option><option value="yes">Business (deductible)</option></select></div>`:''}</div><button class="btn wide" style="margin-top:14px" onclick="doNewTxn('${dir}')">Add</button>`); }
+async function doNewTxn(dir){ const a=parseFloat($('#txA').value); if(!a){toast('Enter an amount');return;} const ded=dir==='out'&&$('#txDed')&&$('#txDed').value==='yes'; const {error}=await sb.from('transactions').insert({txn_date:$('#txD').value||null,direction:dir,amount:a,category:$('#txC').value,note:$('#txN').value.trim(),deductible:ded}); if(error){toast(error.message);return;} closeModal(); toast('Logged'); vMoney(); }
+async function setBudget(){ const {data:b}=await sb.from('budgets').select('*'); const cats=['Freelancer','Tools/Software','Gear','Travel','Food','Subscriptions','Personal']; const cur=Object.fromEntries((b||[]).map(x=>[x.category,x.monthly_limit])); window.__budCats=cats; modal('Monthly budgets',`<div class="tiny muted" style="margin-bottom:8px">Set a monthly cap per category — you'll get an overspend warning when you cross it.</div>`+cats.map((c,ix)=>`<label>${c} (₹/mo)</label><input id="bud_${ix}" type="number" value="${cur[c]||''}" placeholder="e.g. 10000">`).join('')+`<button class="btn wide" style="margin-top:14px" onclick="doSetBudget()">Save budgets</button>`); }
+async function doSetBudget(){ const cats=window.__budCats||[]; const rows=cats.map((c,ix)=>({category:c,monthly_limit:parseFloat($('#bud_'+ix).value)||0})).filter(r=>r.monthly_limit>0); if(rows.length) await sb.from('budgets').upsert(rows); closeModal(); toast('Budgets saved'); vMoney(); }
+async function delRow(table,id){ await sb.from(table).delete().eq('id',id); vMoney(); }
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
