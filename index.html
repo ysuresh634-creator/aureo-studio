@@ -229,6 +229,9 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 .crow-act{display:flex;gap:6px;flex:none}
 .cact{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:34px;height:34px;padding:0 10px;border:1.5px solid var(--ink);background:var(--cream);border-radius:7px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap}
 .cact:hover{background:var(--gold)}
+.cact.wa{background:#daf5e3;border-color:#1c7a3d;color:#12602f}
+.cact.wa:hover{background:#25D366;color:#fff}
+.ccold{display:inline-block;margin-left:8px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#fdecc8;color:#8a5a00;padding:2px 8px;border-radius:999px;vertical-align:middle}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:14px}
 .ccard{background:var(--win);border:2px solid var(--ink);border-radius:12px;padding:15px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:11px}
 .ccard:hover{box-shadow:4px 4px 0 var(--ink);transform:translate(-1px,-1px)}
@@ -594,9 +597,14 @@ async function vClientHome(){
 
 async function loadInvoices(){ if(MONEY&&MONEY.invoices) return MONEY.invoices; if(INV) return INV; const {data}=await sb.from('invoices').select('client_id,amount,status'); INV=data||[]; return INV; }
 function inrShort(n){ n=Number(n)||0; if(n>=10000000)return '₹'+(n/10000000).toFixed(n%10000000?1:0)+'Cr'; if(n>=100000)return '₹'+(n/100000).toFixed(n%100000?1:0)+'L'; if(n>=1000)return '₹'+Math.round(n/1000)+'k'; return '₹'+Math.round(n); }
-const CSEGS=[['all','All'],['active','Active'],['prospect','Prospects'],['due','Owes me']];
+function cEmail(c){ return (c.email&&c.email.includes('@'))?c.email:((c.contact||'').includes('@')?c.contact:''); }
+function waLink(p){ let d=(p||'').replace(/\D/g,''); if(!d)return ''; if(d.length===10)d='91'+d; return 'https://wa.me/'+d; }
+function daysSince(d){ if(!d)return null; const t=new Date(d+'T00:00:00').getTime(); if(isNaN(t))return null; return Math.floor((Date.now()-t)/86400000); }
+function isCold(c){ const s=CSTAT[c.id]||{proj:0}; if(!(s.proj>0))return false; const d=daysSince(c.last_contacted); return d===null||d>30; }
+function coldPill(c){ if(!isCold(c))return ''; const d=daysSince(c.last_contacted); return `<span class="ccold" title="Follow up — no contact logged${d!=null?' in '+d+' days':' yet'}">${d==null?'never':d+'d'} cold</span>`; }
+const CSEGS=[['all','All'],['active','Active'],['prospect','Prospects'],['due','Owes me'],['cold','Cold']];
 const CSORTS=[['name','Name A–Z'],['proj','Most projects'],['rev','Most revenue'],['due','Owes most'],['new','Recently added']];
-function cSegMatch(c,k){ const s=CSTAT[c.id]||{proj:0,due:0}; return k==='all'?true:k==='active'?s.proj>0:k==='prospect'?s.proj===0:k==='due'?s.due>0:true; }
+function cSegMatch(c,k){ const s=CSTAT[c.id]||{proj:0,due:0}; return k==='all'?true:k==='active'?s.proj>0:k==='prospect'?s.proj===0:k==='due'?s.due>0:k==='cold'?isCold(c):true; }
 function csum(v,l,mod){ return `<div class="csum ${mod||''}"><div class="v">${v}</div><div class="l">${l}</div></div>`; }
 async function vClients(){
   const [ps,inv]=await Promise.all([loadProjects(),loadInvoices()]);
@@ -625,24 +633,25 @@ function clientsBody(){
   if(!list.length) return `<div class="muted" style="font-size:13px;padding:30px;text-align:center">No clients${q?' matching “'+esc(SEARCH)+'”':' in this view'}.</div>`;
   return CVIEW==='cards'?`<div class="cgrid">${list.map(cliCardNew).join('')}</div>`:`<div class="clist">${list.map(cliRow).join('')}</div>`;
 }
-function cliRow(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const email=(c.contact||'').includes('@')?c.contact:''; return `
+function cliRow(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const em=cEmail(c); const wa=waLink(c.phone); return `
  <div class="crow" onclick="nav('client','${c.id}')">
   <span class="cav">${ini(c.name)}</span>
-  <div class="crow-main"><div class="crow-t">${esc(c.name)}</div><div class="crow-s">${esc(c.contact||'—')}${c.city?' · '+esc(c.city):''}</div></div>
+  <div class="crow-main"><div class="crow-t">${esc(c.name)}${coldPill(c)}</div><div class="crow-s">${esc(c.contact||em||'—')}${c.city?' · '+esc(c.city):''}</div></div>
   <div class="crow-stats"><div class="cstat"><b>${s.proj}</b><span>proj</span></div><div class="cstat"><b>${s.rev?inrShort(s.rev):'—'}</b><span>in</span></div>${s.due>0?`<div class="cstat due"><b>${inrShort(s.due)}</b><span>due</span></div>`:''}</div>
-  <div class="crow-act" onclick="event.stopPropagation()">${email?`<a class="cact" href="mailto:${esc(email)}" title="Email ${esc(email)}">✉</a>`:''}${c.website?`<a class="cact" href="${esc(c.website)}" target="_blank" rel="noopener" title="Open website">↗</a>`:''}<button class="cact" onclick="newProject('${c.id}')" title="New project">＋</button></div>
+  <div class="crow-act" onclick="event.stopPropagation()">${wa?`<a class="cact wa" href="${wa}" target="_blank" rel="noopener" title="WhatsApp">WA</a>`:''}${c.phone?`<a class="cact" href="tel:${esc(c.phone)}" title="Call">☎</a>`:''}${em?`<a class="cact" href="mailto:${esc(em)}" title="Email ${esc(em)}">✉</a>`:''}<button class="cact" onclick="doLogContact('${c.id}')" title="Log contact today">✓</button></div>
  </div>`; }
-function cliCardNew(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const email=(c.contact||'').includes('@')?c.contact:''; return `
+function cliCardNew(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const em=cEmail(c); const wa=waLink(c.phone); return `
  <div class="ccard" onclick="nav('client','${c.id}')">
-  <div class="ccard-h"><span class="cav">${ini(c.name)}</span><div style="flex:1;min-width:0"><div class="ccard-t">${esc(c.name)}</div><div class="ccard-s">${esc(c.city||'—')}</div></div></div>
-  <div class="ccard-c">${esc(c.contact||'—')}</div>
+  <div class="ccard-h"><span class="cav">${ini(c.name)}</span><div style="flex:1;min-width:0"><div class="ccard-t">${esc(c.name)}</div><div class="ccard-s">${esc(c.city||'—')}${coldPill(c)}</div></div></div>
+  <div class="ccard-c">${esc(c.contact||em||'—')}</div>
   <div class="ccard-m"><span class="chip">${s.proj} project${s.proj===1?'':'s'}</span>${s.rev?`<span class="cmoney">${inrShort(s.rev)} in</span>`:''}${s.due>0?`<span class="cmoney due">${inrShort(s.due)} due</span>`:''}</div>
-  <div class="ccard-act" onclick="event.stopPropagation()">${email?`<a class="cact" href="mailto:${esc(email)}">✉ Email</a>`:''}${c.website?`<a class="cact" href="${esc(c.website)}" target="_blank" rel="noopener">↗ Site</a>`:''}<button class="cact" onclick="newProject('${c.id}')">＋ Project</button></div>
+  <div class="ccard-act" onclick="event.stopPropagation()">${wa?`<a class="cact wa" href="${wa}" target="_blank" rel="noopener">WA</a>`:''}${c.phone?`<a class="cact" href="tel:${esc(c.phone)}">☎ Call</a>`:''}${em?`<a class="cact" href="mailto:${esc(em)}">✉ Email</a>`:''}<button class="cact" onclick="doLogContact('${c.id}')">✓ Log</button></div>
  </div>`; }
 window.setCSeg=function(k){ CSEG=k; vClients(); };
 window.setCView=function(k){ CVIEW=k; vClients(); };
 window.setCSort=function(k){ CSORT=k; const b=$('#cliBody'); if(b) b.innerHTML=clientsBody(); };
 window.filterClients=function(){ const b=$('#cliBody'); if(b) b.innerHTML=clientsBody(); };
+async function doLogContact(id){ const t=today10(); const {data,error}=await sb.from('clients').update({last_contacted:t}).eq('id',id).select().single(); if(error){toast(error.message);return;} if(data) CLIENTS[id]=data; else if(CLIENTS[id]) CLIENTS[id].last_contacted=t; toast('Contact logged — today'); if(view.v==='clients') vClients(); else if(view.v==='client') vClientDetail(id); }
 async function vClientDetail(id){
   const c=CLIENTS[id]; if(!c){ $('#view').innerHTML=emptyState('Not found','','');return; }
   const ps=(await loadProjects()).filter(p=>p.client_id===id);
@@ -653,8 +662,9 @@ async function vClientDetail(id){
    <div>${winWrap('PROJECTS',ps.length?`<div class="grid" style="grid-template-columns:1fr">${ps.map(p=>projCard(p,false)).join('')}</div>`:'<div class="muted" style="font-size:13px">No projects yet.</div>')}
      <div style="margin-top:8px"></div></div>
    <div>${winWrap('DETAILS.TXT',`
-     <div style="font-size:13px;line-height:2"><b>Contact</b><br>${esc(c.contact||'—')}<br><br><b>City</b><br>${esc(c.city||'—')}<br><br><b>Website</b><br>${c.website?`<a href="${esc(c.website)}" target="_blank" style="color:var(--blue)">${esc(c.website)}</a>`:'—'}<br><br><b>Notes</b><br><span class="muted">${esc(c.notes||'—')}</span></div>
-     <button class="btn ghost sm wide" style="margin-top:14px" onclick="editClient('${c.id}')">Edit client</button>
+     <div style="font-size:13px;line-height:2"><b>Contact</b><br>${esc(c.contact||'—')}<br><br><b>Email</b><br>${cEmail(c)?`<a href="mailto:${esc(cEmail(c))}" style="color:var(--blue)">${esc(cEmail(c))}</a>`:'—'}<br><br><b>Phone</b><br>${c.phone?esc(c.phone):'—'}<br><br><b>City</b><br>${esc(c.city||'—')}<br><br><b>Website</b><br>${c.website?`<a href="${esc(c.website)}" target="_blank" style="color:var(--blue)">${esc(c.website)}</a>`:'—'}<br><br><b>Last contacted</b><br>${c.last_contacted?fmtd(c.last_contacted)+(daysSince(c.last_contacted)!=null?' · '+daysSince(c.last_contacted)+'d ago':''):'<span class="muted">never logged</span>'}<br><br><b>Notes</b><br><span class="muted">${esc(c.notes||'—')}</span></div>
+     <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px">${waLink(c.phone)?`<a class="cact wa" href="${waLink(c.phone)}" target="_blank" rel="noopener">WA WhatsApp</a>`:''}${c.phone?`<a class="cact" href="tel:${esc(c.phone)}">☎ Call</a>`:''}${cEmail(c)?`<a class="cact" href="mailto:${esc(cEmail(c))}">✉ Email</a>`:''}<button class="cact" onclick="doLogContact('${c.id}')">✓ Log contact</button></div>
+     <button class="btn ghost sm wide" style="margin-top:12px" onclick="editClient('${c.id}')">Edit client</button>
      <button class="btn sm wide" style="margin-top:8px" onclick="newProject('${c.id}')">+ New project for ${esc(c.name)}</button>`)}</div>
   </div>`;
 }
@@ -1027,19 +1037,19 @@ async function sendMsg(pid){ const ta=$('#msgIn'); const b=ta.value.trim(); if(!
 async function approve(itid,pid){ await sb.from('deliverables').update({status:'approved'}).eq('id',itid); await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'✓ Approved — looks great!'}); toast('Approved — thank you!'); render(); }
 function reqChange(itid,pid){ modal('Request a change',`<textarea id="chg" rows="4" placeholder="e.g. Use the peach background on slide 4"></textarea><button class="btn wide" style="margin-top:14px" onclick="doChange('${itid}','${pid}')">Send request</button>`); }
 async function doChange(itid,pid){ const t=$('#chg').value.trim(); await sb.from('deliverables').update({status:'changes',change_note:t||'Please revise'}).eq('id',itid); await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'↺ Change requested: '+(t||'please revise')}); closeModal(); toast('Sent to the studio'); render(); }
-function newClient(){ modal('New client',`<label>Brand name</label><input id="ncN" placeholder="Maison Bloom"><label>Contact person</label><input id="ncC" placeholder="Priya Nair"><div class="two"><div><label>City</label><input id="ncCity" placeholder="Bangalore"></div><div><label>Website</label><input id="ncW" placeholder="https://"></div></div><label>Notes</label><textarea id="ncNotes" rows="2"></textarea><button class="btn wide" style="margin-top:14px" onclick="doNewClient()">Create client</button>`); }
+function newClient(){ modal('New client',`<label>Brand name</label><input id="ncN" placeholder="Maison Bloom"><label>Contact person</label><input id="ncC" placeholder="Priya Nair"><div class="two"><div><label>Email</label><input id="ncE" type="email" placeholder="priya@brand.com"></div><div><label>Phone / WhatsApp</label><input id="ncP" placeholder="+91 98xxxxxxxx"></div></div><div class="two"><div><label>City</label><input id="ncCity" placeholder="Bangalore"></div><div><label>Website</label><input id="ncW" placeholder="https://"></div></div><label>Notes</label><textarea id="ncNotes" rows="2"></textarea><button class="btn wide" style="margin-top:14px" onclick="doNewClient()">Create client</button>`); }
 async function doNewClient(){ const name=$('#ncN').value.trim(); if(!name){toast('Give it a name');return;}
-  const {data,error}=await sb.from('clients').insert({name,contact:$('#ncC').value.trim(),city:$('#ncCity').value.trim(),website:$('#ncW').value.trim(),notes:$('#ncNotes').value.trim()}).select().single();
+  const {data,error}=await sb.from('clients').insert({name,contact:$('#ncC').value.trim(),email:$('#ncE').value.trim()||null,phone:$('#ncP').value.trim()||null,city:$('#ncCity').value.trim(),website:$('#ncW').value.trim(),notes:$('#ncNotes').value.trim()}).select().single();
   if(error){toast(error.message);return;} CLIENTS[data.id]=data; closeModal(); toast('Client created'); nav('clients'); }
-function editClient(id){ const c=CLIENTS[id]; modal('Edit client',`<label>Brand name</label><input id="ecN" value="${esc(c.name)}"><label>Contact</label><input id="ecC" value="${esc(c.contact||'')}"><div class="two"><div><label>City</label><input id="ecCity" value="${esc(c.city||'')}"></div><div><label>Website</label><input id="ecW" value="${esc(c.website||'')}"></div></div><label>Notes</label><textarea id="ecNotes" rows="2">${esc(c.notes||'')}</textarea><button class="btn wide" style="margin-top:14px" onclick="doEditClient('${id}')">Save</button>`); }
-async function doEditClient(id){ const patch={name:$('#ecN').value.trim(),contact:$('#ecC').value.trim(),city:$('#ecCity').value.trim(),website:$('#ecW').value.trim(),notes:$('#ecNotes').value.trim()};
+function editClient(id){ const c=CLIENTS[id]; const d=daysSince(c.last_contacted); modal('Edit client',`<label>Brand name</label><input id="ecN" value="${esc(c.name)}"><label>Contact person</label><input id="ecC" value="${esc(c.contact||'')}"><div class="two"><div><label>Email</label><input id="ecE" type="email" value="${esc(c.email||'')}"></div><div><label>Phone / WhatsApp</label><input id="ecP" value="${esc(c.phone||'')}"></div></div><div class="two"><div><label>City</label><input id="ecCity" value="${esc(c.city||'')}"></div><div><label>Website</label><input id="ecW" value="${esc(c.website||'')}"></div></div><label>Notes</label><textarea id="ecNotes" rows="2">${esc(c.notes||'')}</textarea><div class="tiny muted" style="margin-top:10px">Last contacted: ${c.last_contacted?fmtd(c.last_contacted)+(d!=null?' · '+d+'d ago':''):'never logged'} <button class="btn ghost sm" style="margin-left:6px" onclick="doLogContact('${id}')">Mark today</button></div><button class="btn wide" style="margin-top:12px" onclick="doEditClient('${id}')">Save</button>`); }
+async function doEditClient(id){ const patch={name:$('#ecN').value.trim(),contact:$('#ecC').value.trim(),email:$('#ecE').value.trim()||null,phone:$('#ecP').value.trim()||null,city:$('#ecCity').value.trim(),website:$('#ecW').value.trim(),notes:$('#ecNotes').value.trim()};
   const {data,error}=await sb.from('clients').update(patch).eq('id',id).select().single(); if(error){toast(error.message);return;} CLIENTS[id]=data; closeModal(); toast('Saved'); render(); }
 function newProject(preClient){ const opts=Object.values(CLIENTS).map(c=>`<option value="${c.id}" ${c.id===preClient?'selected':''}>${esc(c.name)}</option>`).join('');
   if(!opts){ newClient(); return; }
   modal('New project',`<label>Client</label><select id="npC">${opts}</select><label>Project title</label><input id="npT" placeholder="May Reels Engine"><label>Type / scope</label><input id="npTy" placeholder="8 reels · monthly"><div class="two"><div><label>Due date</label><input id="npD" type="date"></div><div><label>Priority</label><select id="npP"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></div></div><button class="btn wide" style="margin-top:14px" onclick="doNewProject()">Create project</button>`); }
 async function doNewProject(){ const title=$('#npT').value.trim(); if(!title){toast('Give it a title');return;}
   const {data,error}=await sb.from('projects').insert({client_id:$('#npC').value,title,type:$('#npTy').value.trim(),due_date:$('#npD').value||null,priority:$('#npP').value,stage:0}).select().single();
-  if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast('Project created'); nav('project',data.id); }
+  if(error){toast(error.message);return;} PROJECTS=null; const cid=data.client_id; if(cid){ if(CLIENTS[cid]) CLIENTS[cid].last_contacted=today10(); sb.from('clients').update({last_contacted:today10()}).eq('id',cid).then(()=>{}); } closeModal(); toast('Project created'); nav('project',data.id); }
 function editProject(id){ sb.from('projects').select('*').eq('id',id).single().then(({data:p})=>{ modal('Edit project',`<label>Title</label><input id="epT" value="${esc(p.title)}"><label>Type</label><input id="epTy" value="${esc(p.type||'')}"><div class="two"><div><label>Due date</label><input id="epD" type="date" value="${p.due_date||''}"></div><div><label>Priority</label><select id="epP"><option value="normal" ${p.priority==='normal'?'selected':''}>Normal</option><option value="high" ${p.priority==='high'?'selected':''}>High</option><option value="low" ${p.priority==='low'?'selected':''}>Low</option></select></div></div><button class="btn wide" style="margin-top:14px" onclick="doEditProject('${id}')">Save</button>`); }); }
 async function doEditProject(id){ const {error}=await sb.from('projects').update({title:$('#epT').value.trim(),type:$('#epTy').value.trim(),due_date:$('#epD').value||null,priority:$('#epP').value}).eq('id',id); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast('Saved'); render(); }
 function addItem(pid){ modal('Add deliverable',`<label>Title</label><input id="aiT" placeholder="Reel 03 — testimonial"><label>Emoji</label><input id="aiE" placeholder="🎬" maxlength="4"><button class="btn wide" style="margin-top:14px" onclick="doAddItem('${pid}')">Add</button>`); }
