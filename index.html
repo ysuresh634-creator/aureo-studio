@@ -114,8 +114,10 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
   .shell{grid-template-columns:1fr}
   .side{display:none}
   .main{padding:20px 16px 96px}
-  .mobnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--board);border-top:2.5px solid var(--ink);justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
-  .mobnav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--deep);padding:5px 10px;border-radius:8px}
+  .mobnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--board);border-top:2.5px solid var(--ink);justify-content:space-between;padding:8px 3px calc(8px + env(safe-area-inset-bottom))}
+  .mobnav button{flex:1 1 0;min-width:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:8.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--deep);padding:5px 2px;border-radius:8px}
+  .mobnav button svg{flex:none}
+  .mobnav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mobnav button.on{background:var(--gold);color:var(--ink)}
   .mobtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
   .mobtop .logo{font-family:var(--disp);font-size:18px;display:flex;align-items:center;gap:8px;text-decoration:none}
