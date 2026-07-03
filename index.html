@@ -185,6 +185,25 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 .kbcard .mv button{flex:1;border:1.5px solid var(--ink);background:var(--cream);border-radius:6px;font-size:14px;font-weight:700;padding:2px}
 .kbcard .mv button:hover{background:var(--gold)}
 .kbcard .mv button:disabled{opacity:.3;pointer-events:none}
+.jfilter{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.jchip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:var(--board);border:2px solid var(--ink);border-radius:20px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.jchip .n{background:var(--ink);color:var(--cream);border-radius:12px;padding:0 7px;font-size:10px;min-width:18px;text-align:center}
+.jchip.on{background:var(--ink);color:var(--cream)}
+.jchip.on .n{background:var(--gold);color:var(--ink)}
+.joblist{display:flex;flex-direction:column;gap:10px}
+.jrow{display:flex;align-items:center;gap:12px;background:var(--win);border:2px solid var(--ink);border-radius:10px;padding:13px 14px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.jrow:hover{box-shadow:3px 3px 0 var(--ink);transform:translate(-1px,-1px)}
+.jrow-t{font-size:15px;font-weight:700;line-height:1.25;display:flex;align-items:center;gap:7px}
+.jrow-t .star{color:#c9971a;flex:none}
+.jrow-s{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jrow-m{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:9px}
+.jrow-m .jd{font-size:11px;color:var(--muted)}
+.jrow-m .jlink{font-size:11px;font-weight:700;color:var(--blue);text-decoration:none}
+.jpill{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 9px;border-radius:999px}
+.jmv{display:flex;gap:6px;flex:none}
+.jmv button{width:36px;height:34px;border:1.5px solid var(--ink);background:var(--cream);border-radius:7px;font-size:17px;font-weight:700;cursor:pointer;line-height:1}
+.jmv button:hover{background:var(--gold)}
+.jmv button:disabled{opacity:.3;pointer-events:none}
 
 /* ===== detail ===== */
 .detail-grid{display:grid;grid-template-columns:1.4fr .9fr;gap:18px;align-items:start}
@@ -341,7 +360,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null;
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active';
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -616,43 +635,49 @@ async function delFollowup(id){ await sb.from('followups').delete().eq('id',id);
 /* ---------- JOBS (private job hunt) ---------- */
 const JSTAGES=['applied','screening','interview','offer','rejected'];
 const JLBL={applied:'Applied',screening:'Screening',interview:'Interview',offer:'Offer',rejected:'Rejected'};
-async function loadJobs(){ const {data}=await sb.from('jobs').select('*').order('created_at',{ascending:false}); return data||[]; }
+async function loadJobs(force){ if(JOBS&&!force) return JOBS; const {data}=await sb.from('jobs').select('*').order('created_at',{ascending:false}); JOBS=data||[]; return JOBS; }
 async function vJobs(){
   const js=await loadJobs();
   $('#view').innerHTML=`
   <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search roles & companies…" oninput="SEARCH=this.value;filterJobs()" value="${esc(SEARCH)}"></div><button class="btn" onclick="newJob()">+ Track a job</button></div>
   <div class="page-h"><div class="eyebrow">Jobs · my search</div><h1>Land the next one.</h1></div>
-  <div class="stats">
-   ${stat(js.length,'Tracked','gold')}
-   ${stat(js.filter(j=>j.status==='applied').length,'Applied')}
-   ${stat(js.filter(j=>j.status==='interview').length,'Interviewing','ink')}
-   ${stat(js.filter(j=>j.status==='offer').length,'Offers')}
-   ${stat(js.filter(j=>j.status==='rejected').length,'Closed')}
-  </div>
   <div id="jobsKb">${js.length?jobsBoard(js):emptyState('No jobs tracked yet','Add a role you’ve applied to (or want to) and move it Applied → Offer as you go.','<button class="btn" onclick="newJob()">+ Track a job</button>')}</div>`;
 }
+const JFILTERS=[['active','Active'],['applied','Applied'],['screening','Screening'],['interview','Interview'],['offer','Offer'],['rejected','Rejected'],['all','All']];
+function jobStatusMatch(j,k){ return k==='all'?true:k==='active'?j.status!=='rejected':j.status===k; }
+function jpill(s){ const c={applied:['#eef1f6','#55607a'],screening:['#fff3d4','#8a6300'],interview:['#e5efff','#1746c4'],offer:['#e2f6e8','#1c7a3d'],rejected:['#f4e9e9','#a15656']}[s]||['#eee','#555']; return `<span class="jpill" style="background:${c[0]};color:${c[1]}">${JLBL[s]||s}</span>`; }
 function jobsBoard(js){
   const q=SEARCH.toLowerCase();
-  const f=js.filter(j=>!q||(j.role||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q));
-  return `<div class="kb">${JSTAGES.map((s,si)=>{const col=f.filter(j=>j.status===s);return `
-   <div class="kbcol ${s==='offer'?'gate':''}"><div class="h"><span>${JLBL[s]}</span><span class="c">${col.length}</span></div>
-    <div class="body">${col.map(j=>{const pr=j.priority==='high'?'<span class="chip warn" style="margin-top:8px">★ DREAM</span>':'';return `
-     <div class="kbcard" onclick="editJob('${j.id}')">
-      <h4>${esc(j.role||'Role')}</h4><div class="m">${esc(j.company||'—')}${j.location?' · '+esc(j.location):''}</div>${pr}
-      ${j.link?`<a href="${esc(j.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="tiny" style="color:var(--blue);display:inline-block;margin-top:6px">Open posting ↗</a>`:''}
-      <div class="mv" onclick="event.stopPropagation()">
-       <button ${si===0?'disabled':''} onclick="moveJob('${j.id}','${JSTAGES[si-1]}')">‹</button>
-       <button ${si===JSTAGES.length-1?'disabled':''} onclick="moveJob('${j.id}','${JSTAGES[si+1]}')">›</button></div></div>`}).join('')||'<div class="muted" style="font-size:11px;padding:6px">—</div>'}</div></div>`}).join('')}</div>`;
+  const base=js.filter(j=>!q||(j.role||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q));
+  const chips=`<div class="jfilter">${JFILTERS.map(([k,l])=>{const n=base.filter(j=>jobStatusMatch(j,k)).length;return `<button class="jchip${JFILTER===k?' on':''}" onclick="setJFilter('${k}')">${l}<span class="n">${n}</span></button>`;}).join('')}</div>`;
+  const f=base.filter(j=>jobStatusMatch(j,JFILTER)).slice().sort((a,b)=>{ const dp=(b.priority==='high'?1:0)-(a.priority==='high'?1:0); if(dp)return dp; return (b.applied_at||'').localeCompare(a.applied_at||''); });
+  const list=f.length?`<div class="joblist">${f.map(jobListRow).join('')}</div>`:`<div class="muted" style="font-size:13px;padding:26px;text-align:center">No ${JFILTER==='all'||JFILTER==='active'?'':(JLBL[JFILTER]||JFILTER)+' '}jobs${q?' matching “'+esc(SEARCH)+'”':''} here.</div>`;
+  return chips+list;
 }
-window.filterJobs=function(){ const box=$('#jobsKb'); if(box) loadJobs().then(js=>{ box.innerHTML=js.length?jobsBoard(js):emptyState('No jobs tracked yet','Add a role to get started.',''); }); };
-window.moveJob=async function(id,status){ await sb.from('jobs').update({status}).eq('id',id); toast('Moved to '+JLBL[status]); vJobs(); };
+function jobListRow(j){
+  const idx=JSTAGES.indexOf(j.status), prev=idx>0?JSTAGES[idx-1]:null, next=idx>=0&&idx<JSTAGES.length-1?JSTAGES[idx+1]:null;
+  return `<div class="jrow" onclick="editJob('${j.id}')">
+    <div style="flex:1;min-width:0">
+      <div class="jrow-t">${j.priority==='high'?'<span class="star">★</span>':''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.role||'Role')}</span></div>
+      <div class="jrow-s">${esc(j.company||'—')}${j.location?' · '+esc(j.location):''}</div>
+      <div class="jrow-m">${jpill(j.status)}${j.applied_at?`<span class="jd">Applied ${fmtd(j.applied_at)}</span>`:''}${j.link?`<a href="${esc(j.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="jlink">Open ↗</a>`:''}</div>
+    </div>
+    <div class="jmv" onclick="event.stopPropagation()">
+      <button ${prev?'':'disabled'} title="Move back" ${prev?`onclick="moveJob('${j.id}','${prev}')"`:''}>‹</button>
+      <button ${next?'':'disabled'} title="Advance stage" ${next?`onclick="moveJob('${j.id}','${next}')"`:''}>›</button>
+    </div>
+  </div>`;
+}
+window.setJFilter=function(k){ JFILTER=k; const box=$('#jobsKb'); if(box) box.innerHTML=jobsBoard(JOBS||[]); };
+window.filterJobs=function(){ const box=$('#jobsKb'); if(box) box.innerHTML=(JOBS&&JOBS.length)?jobsBoard(JOBS):emptyState('No jobs tracked yet','Add a role to get started.',''); };
+window.moveJob=async function(id,status){ const j=(JOBS||[]).find(x=>x.id===id); if(j) j.status=status; const box=$('#jobsKb'); if(box) box.innerHTML=jobsBoard(JOBS||[]); const {error}=await sb.from('jobs').update({status}).eq('id',id); if(error) toast(error.message); else toast('Moved to '+JLBL[status]); };
 const jobForm=j=>`<label>Role / title</label><input id="jR" value="${esc(j.role||'')}" placeholder="Senior Video Editor"><label>Company</label><input id="jC" value="${esc(j.company||'')}" placeholder="Ogilvy"><div class="two"><div><label>Location</label><input id="jL" value="${esc(j.location||'')}" placeholder="London / Remote"></div><div><label>Status</label><select id="jS">${JSTAGES.map(s=>`<option value="${s}" ${j.status===s?'selected':''}>${JLBL[s]}</option>`).join('')}</select></div></div><label>Job link</label><input id="jU" value="${esc(j.link||'')}" placeholder="https://"><div class="two"><div><label>Applied on</label><input id="jD" type="date" value="${j.applied_at||''}"></div><div><label>Priority</label><select id="jP"><option value="normal" ${j.priority!=='high'?'selected':''}>Normal</option><option value="high" ${j.priority==='high'?'selected':''}>★ Dream role</option></select></div></div><label>Notes</label><textarea id="jN" rows="3" placeholder="Recruiter name, referral, next step, salary…">${esc(j.notes||'')}</textarea>`;
 function readJob(){ return {role:$('#jR').value.trim(),company:$('#jC').value.trim(),location:$('#jL').value.trim(),status:$('#jS').value,link:$('#jU').value.trim(),applied_at:$('#jD').value||null,priority:$('#jP').value,notes:$('#jN').value.trim()}; }
 function newJob(){ modal('Track a job',jobForm({})+`<button class="btn wide" style="margin-top:14px" onclick="doNewJob()">Add to tracker</button>`); }
-async function doNewJob(){ const j=readJob(); if(!j.role){toast('Give it a role');return;} const {error}=await sb.from('jobs').insert(j); if(error){toast(error.message);return;} closeModal(); toast('Job tracked'); vJobs(); }
-function editJob(id){ sb.from('jobs').select('*').eq('id',id).single().then(({data:j})=>{ modal('Edit job',jobForm(j)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="doEditJob('${id}')">Save</button><button class="btn ghost" onclick="delJob('${id}')">Delete</button></div>`); }); }
-async function doEditJob(id){ const {error}=await sb.from('jobs').update(readJob()).eq('id',id); if(error){toast(error.message);return;} closeModal(); toast('Saved'); vJobs(); }
-async function delJob(id){ await sb.from('jobs').delete().eq('id',id); closeModal(); toast('Removed'); vJobs(); }
+async function doNewJob(){ const j=readJob(); if(!j.role){toast('Give it a role');return;} const {data,error}=await sb.from('jobs').insert(j).select().single(); if(error){toast(error.message);return;} if(JOBS&&data) JOBS.unshift(data); closeModal(); toast('Job tracked'); vJobs(); }
+function editJob(id){ const j=(JOBS||[]).find(x=>x.id===id)||{}; modal('Edit job',jobForm(j)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="doEditJob('${id}')">Save</button><button class="btn ghost" onclick="delJob('${id}')">Delete</button></div>`); }
+async function doEditJob(id){ const {data,error}=await sb.from('jobs').update(readJob()).eq('id',id).select().single(); if(error){toast(error.message);return;} if(JOBS&&data){ const i=JOBS.findIndex(x=>x.id===id); if(i>=0) JOBS[i]=data; } closeModal(); toast('Saved'); vJobs(); }
+async function delJob(id){ const {error}=await sb.from('jobs').delete().eq('id',id); if(error){toast(error.message);return;} if(JOBS) JOBS=JOBS.filter(x=>x.id!==id); closeModal(); toast('Removed'); vJobs(); }
 
 /* ---------- MONEY (private finance + ITR) ---------- */
 const inr = n => '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:0});
