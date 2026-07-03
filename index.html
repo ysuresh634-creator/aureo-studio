@@ -204,6 +204,49 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 .jmv button{width:36px;height:34px;border:1.5px solid var(--ink);background:var(--cream);border-radius:7px;font-size:17px;font-weight:700;cursor:pointer;line-height:1}
 .jmv button:hover{background:var(--gold)}
 .jmv button:disabled{opacity:.3;pointer-events:none}
+.cli-sum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.csum{background:var(--board);border:2px solid var(--ink);border-radius:10px;padding:10px 16px;min-width:92px}
+.csum .v{font-size:20px;font-weight:800;line-height:1.1}
+.csum .l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.csum.due .v{color:#b23b3b}
+.cli-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cli-right{display:flex;gap:8px;align-items:center}
+.cli-sort{border:2px solid var(--ink);border-radius:8px;background:var(--board);font:inherit;font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer}
+.cli-toggle{display:flex;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
+.cli-toggle button{width:34px;height:34px;background:var(--board);border:none;font-size:15px;cursor:pointer;color:var(--ink)}
+.cli-toggle button.on{background:var(--ink);color:var(--gold)}
+.clist{display:flex;flex-direction:column;gap:8px}
+.crow{display:flex;align-items:center;gap:13px;background:var(--win);border:2px solid var(--ink);border-radius:10px;padding:11px 14px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.crow:hover{box-shadow:3px 3px 0 var(--ink);transform:translate(-1px,-1px)}
+.crow-main{flex:1;min-width:0}
+.crow-t{font-size:15px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow-s{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow-stats{display:flex;gap:16px;flex:none}
+.cstat{text-align:right;min-width:42px}
+.cstat b{font-size:14px;font-weight:800;display:block;line-height:1.1}
+.cstat span{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.cstat.due b{color:#b23b3b}
+.crow-act{display:flex;gap:6px;flex:none}
+.cact{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:34px;height:34px;padding:0 10px;border:1.5px solid var(--ink);background:var(--cream);border-radius:7px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap}
+.cact:hover{background:var(--gold)}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:14px}
+.ccard{background:var(--win);border:2px solid var(--ink);border-radius:12px;padding:15px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:11px}
+.ccard:hover{box-shadow:4px 4px 0 var(--ink);transform:translate(-1px,-1px)}
+.ccard-h{display:flex;align-items:center;gap:11px}
+.ccard-t{font-size:16px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccard-s{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.ccard-c{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccard-m{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cmoney{font-size:11px;font-weight:800;color:#1c7a3d}
+.cmoney.due{color:#b23b3b}
+.ccard-act{display:flex;gap:7px;flex-wrap:wrap;border-top:1.5px dashed rgba(0,0,0,.14);padding-top:11px}
+@media(max-width:600px){
+ .crow{flex-wrap:wrap}
+ .crow-main{flex:1 1 60%}
+ .crow-act{order:2}
+ .crow-stats{order:3;flex-basis:100%;justify-content:flex-start;gap:22px;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.12)}
+ .cstat{text-align:left}
+}
 
 /* ===== detail ===== */
 .detail-grid{display:grid;grid-template-columns:1.4fr .9fr;gap:18px;align-items:start}
@@ -360,7 +403,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active';
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null;
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -549,18 +592,57 @@ async function vClientHome(){
   ${ps.length?`<div class="grid">${ps.map(p=>projCard(p,true)).join('')}</div>`:emptyState('No projects yet','Your work will appear here the moment we start.','')}`;
 }
 
+async function loadInvoices(){ if(MONEY&&MONEY.invoices) return MONEY.invoices; if(INV) return INV; const {data}=await sb.from('invoices').select('client_id,amount,status'); INV=data||[]; return INV; }
+function inrShort(n){ n=Number(n)||0; if(n>=10000000)return '₹'+(n/10000000).toFixed(n%10000000?1:0)+'Cr'; if(n>=100000)return '₹'+(n/100000).toFixed(n%100000?1:0)+'L'; if(n>=1000)return '₹'+Math.round(n/1000)+'k'; return '₹'+Math.round(n); }
+const CSEGS=[['all','All'],['active','Active'],['prospect','Prospects'],['due','Owes me']];
+const CSORTS=[['name','Name A–Z'],['proj','Most projects'],['rev','Most revenue'],['due','Owes most'],['new','Recently added']];
+function cSegMatch(c,k){ const s=CSTAT[c.id]||{proj:0,due:0}; return k==='all'?true:k==='active'?s.proj>0:k==='prospect'?s.proj===0:k==='due'?s.due>0:true; }
+function csum(v,l,mod){ return `<div class="csum ${mod||''}"><div class="v">${v}</div><div class="l">${l}</div></div>`; }
 async function vClients(){
-  const list=Object.values(CLIENTS); const ps=await loadProjects();
-  const count=id=>ps.filter(p=>p.client_id===id).length;
+  const [ps,inv]=await Promise.all([loadProjects(),loadInvoices()]);
+  const list=Object.values(CLIENTS);
+  CSTAT={}; list.forEach(c=>CSTAT[c.id]={proj:0,rev:0,due:0});
+  ps.forEach(p=>{ const s=CSTAT[p.client_id]; if(s) s.proj++; });
+  inv.forEach(i=>{ const s=CSTAT[i.client_id]; if(!s)return; if(i.status==='paid') s.rev+=Number(i.amount)||0; else s.due+=Number(i.amount)||0; });
+  const totRev=inv.filter(i=>i.status==='paid').reduce((a,i)=>a+(Number(i.amount)||0),0);
+  const totDue=inv.filter(i=>i.status!=='paid').reduce((a,i)=>a+(Number(i.amount)||0),0);
+  const active=list.filter(c=>CSTAT[c.id].proj>0).length;
   $('#view').innerHTML=`
-  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search clients…" oninput="SEARCH=this.value;render()" value="${esc(SEARCH)}"></div><button class="btn" onclick="newClient()">+ New client</button></div>
-  <div class="page-h"><div class="eyebrow">Clients</div><h1>Your roster.</h1></div>
-  ${list.length?`<div class="grid">${list.filter(c=>!SEARCH||c.name.toLowerCase().includes(SEARCH.toLowerCase())).map(c=>`
-   <div class="win pcard" onclick="nav('client','${c.id}')"><div class="win-bar"><span>CLIENT</span><span class="dots">+ + +</span></div><div class="win-body">
-    <div class="cli"><span class="cav">${ini(c.name)}</span>${esc(c.city||'')}</div><h3>${esc(c.name)}</h3>
-    <div class="pt">${esc(c.contact||'—')}</div><div class="pfoot"><span class="chip">${count(c.id)} project${count(c.id)===1?'':'s'}</span></div></div></div>`).join('')}</div>`
-   :emptyState('No clients yet','Add your first client to get started.','<button class="btn" onclick="newClient()">+ New client</button>')}`;
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search clients, contacts, city…" oninput="SEARCH=this.value;filterClients()" value="${esc(SEARCH)}"></div><button class="btn" onclick="newClient()">+ New client</button></div>
+  <div class="page-h"><div class="eyebrow">Clients · ${list.length} total</div><h1>Your roster.</h1></div>
+  ${list.length?`<div class="cli-sum">${csum(list.length,'Clients')}${csum(active,'Active')}${csum(inrShort(totRev),'Collected')}${csum(inrShort(totDue),'Outstanding',totDue>0?'due':'')}</div>
+  <div class="cli-controls">
+   <div class="jfilter" style="margin:0">${CSEGS.map(([k,l])=>`<button class="jchip${CSEG===k?' on':''}" onclick="setCSeg('${k}')">${l}<span class="n">${list.filter(c=>cSegMatch(c,k)).length}</span></button>`).join('')}</div>
+   <div class="cli-right"><select class="cli-sort" onchange="setCSort(this.value)">${CSORTS.map(([k,l])=>`<option value="${k}" ${CSORT===k?'selected':''}>${l}</option>`).join('')}</select><div class="cli-toggle"><button class="${CVIEW==='list'?'on':''}" onclick="setCView('list')" title="List view">▤</button><button class="${CVIEW==='cards'?'on':''}" onclick="setCView('cards')" title="Card view">▦</button></div></div>
+  </div>
+  <div id="cliBody">${clientsBody()}</div>`
+  :emptyState('No clients yet','Add your first client to get started.','<button class="btn" onclick="newClient()">+ New client</button>')}`;
 }
+function clientsBody(){
+  const q=SEARCH.toLowerCase();
+  let list=Object.values(CLIENTS).filter(c=>cSegMatch(c,CSEG)).filter(c=>!q||(c.name||'').toLowerCase().includes(q)||(c.contact||'').toLowerCase().includes(q)||(c.city||'').toLowerCase().includes(q));
+  list.sort((a,b)=>{ const A=CSTAT[a.id]||{},B=CSTAT[b.id]||{}; if(CSORT==='proj')return (B.proj||0)-(A.proj||0); if(CSORT==='rev')return (B.rev||0)-(A.rev||0); if(CSORT==='due')return (B.due||0)-(A.due||0); if(CSORT==='new')return (b.created_at||'').localeCompare(a.created_at||''); return (a.name||'').localeCompare(b.name||''); });
+  if(!list.length) return `<div class="muted" style="font-size:13px;padding:30px;text-align:center">No clients${q?' matching “'+esc(SEARCH)+'”':' in this view'}.</div>`;
+  return CVIEW==='cards'?`<div class="cgrid">${list.map(cliCardNew).join('')}</div>`:`<div class="clist">${list.map(cliRow).join('')}</div>`;
+}
+function cliRow(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const email=(c.contact||'').includes('@')?c.contact:''; return `
+ <div class="crow" onclick="nav('client','${c.id}')">
+  <span class="cav">${ini(c.name)}</span>
+  <div class="crow-main"><div class="crow-t">${esc(c.name)}</div><div class="crow-s">${esc(c.contact||'—')}${c.city?' · '+esc(c.city):''}</div></div>
+  <div class="crow-stats"><div class="cstat"><b>${s.proj}</b><span>proj</span></div><div class="cstat"><b>${s.rev?inrShort(s.rev):'—'}</b><span>in</span></div>${s.due>0?`<div class="cstat due"><b>${inrShort(s.due)}</b><span>due</span></div>`:''}</div>
+  <div class="crow-act" onclick="event.stopPropagation()">${email?`<a class="cact" href="mailto:${esc(email)}" title="Email ${esc(email)}">✉</a>`:''}${c.website?`<a class="cact" href="${esc(c.website)}" target="_blank" rel="noopener" title="Open website">↗</a>`:''}<button class="cact" onclick="newProject('${c.id}')" title="New project">＋</button></div>
+ </div>`; }
+function cliCardNew(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0}; const email=(c.contact||'').includes('@')?c.contact:''; return `
+ <div class="ccard" onclick="nav('client','${c.id}')">
+  <div class="ccard-h"><span class="cav">${ini(c.name)}</span><div style="flex:1;min-width:0"><div class="ccard-t">${esc(c.name)}</div><div class="ccard-s">${esc(c.city||'—')}</div></div></div>
+  <div class="ccard-c">${esc(c.contact||'—')}</div>
+  <div class="ccard-m"><span class="chip">${s.proj} project${s.proj===1?'':'s'}</span>${s.rev?`<span class="cmoney">${inrShort(s.rev)} in</span>`:''}${s.due>0?`<span class="cmoney due">${inrShort(s.due)} due</span>`:''}</div>
+  <div class="ccard-act" onclick="event.stopPropagation()">${email?`<a class="cact" href="mailto:${esc(email)}">✉ Email</a>`:''}${c.website?`<a class="cact" href="${esc(c.website)}" target="_blank" rel="noopener">↗ Site</a>`:''}<button class="cact" onclick="newProject('${c.id}')">＋ Project</button></div>
+ </div>`; }
+window.setCSeg=function(k){ CSEG=k; vClients(); };
+window.setCView=function(k){ CVIEW=k; vClients(); };
+window.setCSort=function(k){ CSORT=k; const b=$('#cliBody'); if(b) b.innerHTML=clientsBody(); };
+window.filterClients=function(){ const b=$('#cliBody'); if(b) b.innerHTML=clientsBody(); };
 async function vClientDetail(id){
   const c=CLIENTS[id]; if(!c){ $('#view').innerHTML=emptyState('Not found','','');return; }
   const ps=(await loadProjects()).filter(p=>p.client_id===id);
