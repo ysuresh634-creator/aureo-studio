@@ -1,11 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════
 --  AUREO STUDIO — ONE-TIME SETUP. Paste ALL of this into Supabase
 --  → SQL Editor → New query → Run.  Safe to re-run (idempotent).
---  Turns on: Money (invoices/payouts/ledger/budgets/UPI+bank/plan),
---  Fixed bills, Jobs (+ your applications), and the Freelancer role.
+--  Money (invoices/payouts/ledger/budgets/UPI+bank/plan), Fixed bills,
+--  Bank accounts (your 3, seeded), Jobs (+71 apps), Freelancer role.
 -- ═══════════════════════════════════════════════════════════════
 
--- ========== MONEY + FIXED BILLS ==========
+-- ========== MONEY + FIXED BILLS + ACCOUNTS ==========
 -- Aureo Studio — MONEY layer. Run ONCE in Supabase SQL Editor.
 -- Everything here is TEAM-ONLY (private). Clients can never read any of it.
 
@@ -106,6 +106,27 @@ create table if not exists public.recurring (
 alter table public.recurring enable row level security;
 drop policy if exists "recurring team" on public.recurring;
 create policy "recurring team" on public.recurring for all using (public.is_team()) with check (public.is_team());
+
+-- Bank accounts — track balances, split business vs personal
+create table if not exists public.accounts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  kind text default 'personal',   -- business / personal
+  balance numeric default 0,
+  sort int default 0,
+  created_at timestamptz default now()
+);
+alter table public.accounts enable row level security;
+drop policy if exists "accounts team" on public.accounts;
+create policy "accounts team" on public.accounts for all using (public.is_team()) with check (public.is_team());
+-- seed Yedukrishna's 3 accounts (only if none exist yet; edit balances in-app)
+insert into public.accounts (name, kind, sort)
+select v.name, v.kind, v.sort from (values
+  ('SBI YONO Business — YKS Productions','business',1),
+  ('SBI YONO — Personal','personal',2),
+  ('Canara Bank — Savings','personal',3)
+) as v(name,kind,sort)
+where not exists (select 1 from public.accounts);
 
 -- ========== FREELANCER ROLE + RLS ==========
 -- Aureo Studio — HIDDEN FREELANCER pipeline. Run ONCE in Supabase SQL Editor.
