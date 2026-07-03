@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#F4F1E9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://qdleoebiizvwuvmcjdad.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Chango&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -325,7 +327,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, view={v:'home',arg:null}, ch=null, SEARCH='';
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='';
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -372,10 +374,17 @@ async function setPw(){
 }
 async function enter(){
   const {data:{user}}=await sb.auth.getUser(); if(!user) return showLogin();
-  let prof=null;
-  try{ const r=await sb.from('profiles').select('role,client_id,name,title').eq('id',user.id).maybeSingle(); prof=r.data; }catch(e){}
+  let prof=null, cls=[];
+  try{
+    const [pr,cl]=await Promise.all([
+      sb.from('profiles').select('role,client_id,name,title').eq('id',user.id).maybeSingle(),
+      sb.from('clients').select('*'),
+      loadProjects(true)                       // warm the projects cache in parallel
+    ]);
+    prof=pr.data; cls=cl.data||[];
+  }catch(e){ CLIENTS={}; }
   ME={id:user.id,email:user.email,role:prof?.role||'client',client_id:prof?.client_id||null,name:prof?.name||user.email,title:prof?.title||''};
-  try{ const {data:cls}=await sb.from('clients').select('*'); CLIENTS={}; (cls||[]).forEach(c=>CLIENTS[c.id]=c); }catch(e){ CLIENTS={}; }
+  CLIENTS={}; cls.forEach(c=>CLIENTS[c.id]=c);
   history.replaceState(null,'',location.pathname);
   $('#authWrap').classList.add('hide'); $('#setpwWrap').classList.add('hide'); $('#app').style.display='block';
   $('#roleBadge').textContent=ME.role==='team'?'TEAM':'CLIENT';
@@ -423,7 +432,7 @@ function projCard(p,clientView){
    <div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div>
    <div class="pfoot"><span class="chip ${chip}">${p.stage===2?'🔒 '+st:st}</span><div style="display:flex;gap:6px;align-items:center">${pr}<span class="tiny muted">${prog(p)}%</span></div></div></div></div>`;
 }
-async function loadProjects(){ const {data}=await sb.from('projects').select('*').order('created_at',{ascending:false}); return data||[]; }
+async function loadProjects(force){ if(PROJECTS&&!force) return PROJECTS; const {data}=await sb.from('projects').select('*').order('created_at',{ascending:false}); PROJECTS=data||[]; return PROJECTS; }
 
 async function vTeamHome(){
   const ps=await loadProjects();
@@ -510,8 +519,10 @@ window.moveStage=async function(pid,s){ await doStage(pid,s); toast('Moved to '+
 
 async function vMessages(){
   const ps=await loadProjects();
-  const withMsg=[];
-  for(const p of ps){ const {data:m}=await sb.from('messages').select('created_at,body').eq('project_id',p.id).order('created_at',{ascending:false}).limit(1); if(m&&m.length) withMsg.push({p,last:m[0]}); }
+  // one query for ALL messages (newest first), then pick the latest per project — no per-project round-trips
+  const {data:allMsgs}=await sb.from('messages').select('project_id,body,created_at').order('created_at',{ascending:false});
+  const lastByProj={}; (allMsgs||[]).forEach(m=>{ if(!lastByProj[m.project_id]) lastByProj[m.project_id]=m; });
+  const withMsg=ps.filter(p=>lastByProj[p.id]).map(p=>({p,last:lastByProj[p.id]}));
   withMsg.sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
   $('#view').innerHTML=`
   <div class="page-h"><div class="eyebrow">Messages</div><h1>Every conversation.</h1></div>
@@ -639,7 +650,7 @@ function subscribe(pid){
 
 /* ---------- ACTIONS ---------- */
 async function doStage(pid,s){
-  await sb.from('projects').update({stage:s}).eq('id',pid);
+  await sb.from('projects').update({stage:s}).eq('id',pid); PROJECTS=null;
   if(s===2) await sb.from('deliverables').update({status:'gate'}).eq('project_id',pid).eq('status','draft');
   if(s===3) await sb.from('deliverables').update({status:'review'}).eq('project_id',pid).eq('status','gate');
   await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'→ Moved to “'+STAGES[s]+'”'});
@@ -663,9 +674,9 @@ function newProject(preClient){ const opts=Object.values(CLIENTS).map(c=>`<optio
   modal('New project',`<label>Client</label><select id="npC">${opts}</select><label>Project title</label><input id="npT" placeholder="May Reels Engine"><label>Type / scope</label><input id="npTy" placeholder="8 reels · monthly"><div class="two"><div><label>Due date</label><input id="npD" type="date"></div><div><label>Priority</label><select id="npP"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></div></div><button class="btn wide" style="margin-top:14px" onclick="doNewProject()">Create project</button>`); }
 async function doNewProject(){ const title=$('#npT').value.trim(); if(!title){toast('Give it a title');return;}
   const {data,error}=await sb.from('projects').insert({client_id:$('#npC').value,title,type:$('#npTy').value.trim(),due_date:$('#npD').value||null,priority:$('#npP').value,stage:0}).select().single();
-  if(error){toast(error.message);return;} closeModal(); toast('Project created'); nav('project',data.id); }
+  if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast('Project created'); nav('project',data.id); }
 function editProject(id){ sb.from('projects').select('*').eq('id',id).single().then(({data:p})=>{ modal('Edit project',`<label>Title</label><input id="epT" value="${esc(p.title)}"><label>Type</label><input id="epTy" value="${esc(p.type||'')}"><div class="two"><div><label>Due date</label><input id="epD" type="date" value="${p.due_date||''}"></div><div><label>Priority</label><select id="epP"><option value="normal" ${p.priority==='normal'?'selected':''}>Normal</option><option value="high" ${p.priority==='high'?'selected':''}>High</option><option value="low" ${p.priority==='low'?'selected':''}>Low</option></select></div></div><button class="btn wide" style="margin-top:14px" onclick="doEditProject('${id}')">Save</button>`); }); }
-async function doEditProject(id){ const {error}=await sb.from('projects').update({title:$('#epT').value.trim(),type:$('#epTy').value.trim(),due_date:$('#epD').value||null,priority:$('#epP').value}).eq('id',id); if(error){toast(error.message);return;} closeModal(); toast('Saved'); render(); }
+async function doEditProject(id){ const {error}=await sb.from('projects').update({title:$('#epT').value.trim(),type:$('#epTy').value.trim(),due_date:$('#epD').value||null,priority:$('#epP').value}).eq('id',id); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast('Saved'); render(); }
 function addItem(pid){ modal('Add deliverable',`<label>Title</label><input id="aiT" placeholder="Reel 03 — testimonial"><label>Emoji</label><input id="aiE" placeholder="🎬" maxlength="4"><button class="btn wide" style="margin-top:14px" onclick="doAddItem('${pid}')">Add</button>`); }
 async function doAddItem(pid){ const t=$('#aiT').value.trim(); if(!t){toast('Give it a title');return;}
   const {data:p}=await sb.from('projects').select('stage').eq('id',pid).single(); const st=p.stage>=3?'review':p.stage===2?'gate':'draft';
