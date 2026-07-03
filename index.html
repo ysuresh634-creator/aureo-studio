@@ -248,21 +248,7 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
           <input id="liPass" type="password" placeholder="••••••••" autocomplete="current-password">
           <div class="err" id="liErr"></div>
           <button class="btn wide" id="liBtn">Log in →</button>
-          <div class="altrow">or</div>
-          <button class="btn ghost wide" id="codeToggle">✉ Email me a 6-digit code</button>
-        </div>
-        <!-- code login -->
-        <div id="codeForm" class="hide">
-          <label>Email</label>
-          <input id="cEmail" type="email" placeholder="you@brand.com" autocomplete="username">
-          <button class="btn wide" id="cSend" style="margin-top:10px">Send me a code</button>
-          <div id="cStep2" class="hide">
-            <label style="margin-top:18px">Enter the 6-digit code</label>
-            <div class="codebox"><input id="cCode" inputmode="numeric" maxlength="6" placeholder="000000"></div>
-            <button class="btn wide" id="cVerify" style="margin-top:12px">Verify &amp; enter →</button>
-          </div>
-          <div class="err" id="cErr"></div>
-          <button class="btn ghost wide" id="backToPw" style="margin-top:10px">← Back to password</button>
+          <button class="btn ghost wide" id="forgotBtn" style="margin-top:10px">Forgot password? Email me a reset link</button>
         </div>
         <div class="privacy-note">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z" stroke="#8a857c" stroke-width="2" stroke-linejoin="round"/></svg>
@@ -365,22 +351,14 @@ async function login(){
   if(error){ $('#liErr').textContent=/invalid/i.test(error.message)?'Wrong email or password. Try the code option below.':error.message; return; }
   await enter();
 }
-async function sendCode(){
-  const email=$('#cEmail').value.trim(); if(!email){ $('#cErr').textContent='Enter your email.'; return; }
-  $('#cErr').textContent=''; $('#cSend').disabled=true; $('#cSend').textContent='Sending…';
-  const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
-  $('#cSend').disabled=false; $('#cSend').textContent='Resend code';
-  if(error){ $('#cErr').textContent=error.message; return; }
-  $('#cStep2').classList.remove('hide'); $('#cCode').focus(); toast('Code sent — check your email');
-}
-async function verifyCode(){
-  const email=$('#cEmail').value.trim(), token=$('#cCode').value.trim();
-  if(token.length<6){ $('#cErr').textContent='Enter the 6-digit code.'; return; }
-  $('#cErr').textContent=''; $('#cVerify').disabled=true; $('#cVerify').textContent='Verifying…';
-  const {error}=await sb.auth.verifyOtp({email,token,type:'email'});
-  $('#cVerify').disabled=false; $('#cVerify').textContent='Verify & enter →';
-  if(error){ $('#cErr').textContent='That code is wrong or expired.'; return; }
-  await enter();
+async function forgotPw(){
+  const email=$('#liEmail').value.trim();
+  if(!email){ $('#liErr').textContent='Type your email above first, then tap this.'; return; }
+  $('#liErr').textContent=''; $('#forgotBtn').disabled=true; $('#forgotBtn').textContent='Sending reset link…';
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
+  $('#forgotBtn').disabled=false; $('#forgotBtn').textContent='Forgot password? Email me a reset link';
+  if(error){ $('#liErr').textContent=error.message; return; }
+  toast('Reset link sent — check your email');
 }
 async function setPw(){
   const p=$('#spPass').value; if(!p||p.length<6){ $('#spErr').textContent='Use at least 6 characters.'; return; }
@@ -633,11 +611,7 @@ async function delTask(id,pid){ await sb.from('tasks').delete().eq('id',id); ren
 /* ---------- wire ---------- */
 $('#liBtn').addEventListener('click',login);
 $('#liPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
-$('#codeToggle').addEventListener('click',()=>{$('#pwForm').classList.add('hide');$('#codeForm').classList.remove('hide');$('#cEmail').value=$('#liEmail').value;});
-$('#backToPw').addEventListener('click',()=>{$('#codeForm').classList.add('hide');$('#pwForm').classList.remove('hide');});
-$('#cSend').addEventListener('click',sendCode);
-$('#cVerify').addEventListener('click',verifyCode);
-$('#cCode').addEventListener('keydown',e=>{if(e.key==='Enter')verifyCode()});
+$('#forgotBtn').addEventListener('click',forgotPw);
 $('#spBtn').addEventListener('click',setPw);
 $('#spSkip').addEventListener('click',async()=>{ history.replaceState(null,'',location.pathname); await enter(); });
 $('#logoutBtn').addEventListener('click',logout);
