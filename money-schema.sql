@@ -83,3 +83,18 @@ create policy "payouts team"      on public.payouts      for all using (public.i
 create policy "transactions team" on public.transactions for all using (public.is_team()) with check (public.is_team());
 create policy "budgets team"      on public.budgets      for all using (public.is_team()) with check (public.is_team());
 create policy "fin_settings team" on public.fin_settings for all using (public.is_team()) with check (public.is_team());
+
+-- Fixed / recurring monthly bills (Bike EMI, rent, subscriptions) — reserved in Safe-to-Spend
+create table if not exists public.recurring (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  amount numeric not null,
+  category text,
+  day_of_month int,          -- optional due day (1-31)
+  last_paid date,            -- set when you mark it paid; "due" again next month
+  active boolean default true,
+  created_at timestamptz default now()
+);
+alter table public.recurring enable row level security;
+drop policy if exists "recurring team" on public.recurring;
+create policy "recurring team" on public.recurring for all using (public.is_team()) with check (public.is_team());
