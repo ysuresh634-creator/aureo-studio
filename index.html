@@ -406,7 +406,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null;
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null, FOLLOWUPS=null;
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -485,7 +485,9 @@ function markNav(){ $$('.nav-i,[data-v]').forEach(b=>b.classList.toggle('on',b.d
 /* ---------- RENDER ---------- */
 async function render(){
   markNav();
-  const el=$('#view'); el.innerHTML='<div class="loading"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>'; window.scrollTo(0,0);
+  const el=$('#view'); window.scrollTo(0,0);
+  // Defer the skeleton: cached/instant views finish before it fires, so no flash. Slow first loads still show it after 140ms.
+  const skelT=setTimeout(()=>{ el.innerHTML='<div class="loading"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>'; },140);
   try{
     if(ME.role==='freelancer'){ if(view.v==='project') await vFreelancerProject(view.arg); else await vFreelancerHome(); }
     else if(view.v==='project') await vProject(view.arg);
@@ -499,6 +501,7 @@ async function render(){
     else if(ME.role==='team') await vTeamHome();
     else await vClientHome();
   }catch(e){ el.innerHTML=`<div class="empty"><b>Something went wrong</b><span>${esc(e.message||'')}</span></div>`; }
+  finally{ clearTimeout(skelT); }
 }
 const winWrap=(title,body,extra='')=>`<div class="win"><div class="win-bar"><span>${title}</span><span class="dots">+ + +</span></div><div class="win-body">${body}</div></div>${extra}`;
 function stageTracker(p){
@@ -554,21 +557,21 @@ async function vTeamHome(){
   <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search projects & clients…" oninput="SEARCH=this.value;filterHome()"></div><button class="btn" onclick="newProject()">+ New project</button></div>
   <div class="page-h"><div class="eyebrow">The studio floor</div><h1>Every client, every stage.</h1></div>
   <div class="stats">
-   ${stat(Object.keys(CLIENTS).length,'Clients','gold')}
-   ${stat(ps.filter(p=>p.stage<4).length,'Active')}
-   ${stat(ps.filter(p=>p.stage===2).length,'At the gate','ink')}
-   ${stat(ps.filter(p=>p.stage===3).length,'Awaiting client')}
-   ${stat(ps.filter(p=>p.stage===4).length,'Shipped')}
+   ${stat(Object.keys(CLIENTS).length,'Clients','gold',"nav('clients')")}
+   ${stat(ps.filter(p=>p.stage<4).length,'Active','',"nav('pipeline')")}
+   ${stat(ps.filter(p=>p.stage===2).length,'At the gate','ink',"nav('pipeline')")}
+   ${stat(ps.filter(p=>p.stage===3).length,'Awaiting client','',"nav('pipeline')")}
+   ${stat(ps.filter(p=>p.stage===4).length,'Shipped','',"nav('pipeline')")}
   </div>
   ${od.length?`<div class="attn" style="border-color:var(--warn)">${ICON.clock}<div><b>${od.length} deliverable${od.length>1?'s':''} overdue or due today</b> — ${esc(od.slice(0,3).map(p=>p.title).join(', '))}${od.length>3?'…':''}. Move or ship them.</div></div>`:''}
   ${soon.length?`<div class="attn">${ICON.clock}<div>${soon.length} due in the next few days — ${esc(soon.slice(0,3).map(p=>p.title).join(', '))}${soon.length>3?'…':''}.</div></div>`:''}
   ${attn.length?`<div class="attn">${ICON.clock}<div>${attn.length} ${attn.length>1?'projects are':'project is'} in client review — nudge them if it’s been a while.</div></div>`:''}
   <div class="eyebrow" style="margin:6px 0 10px;cursor:pointer" onclick="nav('money')">Money · tap for the full picture →</div>
   <div class="stats">
-   ${stat((mSafe<0?'−':'')+inr(Math.abs(mSafe)),'Safe to spend',mSafe<0?'ink':'gold')}
-   ${stat(inr(mSpent),'Spent this month')}
-   ${stat(inr(mPendingIn),'Incoming pending')}
-   ${stat(inr(mBalance),'Total balance','ink')}
+   ${stat((mSafe<0?'−':'')+inr(Math.abs(mSafe)),'Safe to spend',mSafe<0?'ink':'gold',"nav('money')")}
+   ${stat(inr(mSpent),'Spent this month','',"nav('money')")}
+   ${stat(inr(mPendingIn),'Incoming pending','',"nav('money')")}
+   ${stat(inr(mBalance),'Total balance','ink',"nav('money')")}
   </div>
   <div class="detail-grid">
     <div id="homeProjects">${ps.length?`<div class="grid">${ps.map(p=>projCard(p,false)).join('')}</div>`:emptyState('No projects yet','Add your first client + project.','<button class="btn" onclick="newProject()">+ New project</button>')}</div>
@@ -583,7 +586,7 @@ window.filterHome=function(){
     box.innerHTML=f.length?`<div class="grid">${f.map(p=>projCard(p,false)).join('')}</div>`:emptyState('No matches','Try a different search.','');
   });
 };
-const stat=(n,l,cls='')=>`<div class="win stat ${cls}"><div class="n">${n}</div><div class="l tiny ${cls?'':'muted'}">${l}</div></div>`;
+const stat=(n,l,cls='',click='')=>`<div class="win stat ${cls}" ${click?`onclick="${click}" style="cursor:pointer"`:''}><div class="n">${n}</div><div class="l tiny ${cls?'':'muted'}">${l}</div></div>`;
 const emptyState=(t,s,btn)=>`<div class="win"><div class="win-bar"><span>EMPTY</span><span class="dots">+ + +</span></div><div class="win-body"><div class="empty"><div class="fdr">📁</div><b>${t}</b><span>${s}</span><div style="margin-top:14px">${btn}</div></div></div></div>`;
 
 async function vClientHome(){
@@ -682,7 +685,7 @@ async function vPipeline(){
        <button ${si===0?'disabled':''} onclick="moveStage('${p.id}',${si-1})">‹</button>
        <button ${si===4?'disabled':''} onclick="moveStage('${p.id}',${si+1})">›</button></div></div>`}).join('')||'<div class="muted" style="font-size:11px;padding:6px">—</div>'}</div></div>`}).join('')}</div>`;
 }
-window.moveStage=async function(pid,s){ await doStage(pid,s); toast('Moved to '+STAGES[s]); vPipeline(); };
+window.moveStage=async function(pid,s){ const p=(PROJECTS||[]).find(x=>x.id===pid); if(p) p.stage=s; vPipeline(); toast('Moved to '+STAGES[s]); doStage(pid,s); };
 
 async function vMessages(){
   const ps=await loadProjects();
@@ -700,9 +703,9 @@ async function vMessages(){
     <span class="tiny muted">${fmt(last.created_at)}</span></div></div>`}).join('')}</div>`:emptyState('No messages yet','Open a project to start a conversation.','')}`;
 }
 
+async function loadFollowups(force){ if(FOLLOWUPS&&!force) return FOLLOWUPS; const {data}=await sb.from('followups').select('*').order('received_at',{ascending:false}); FOLLOWUPS=data||[]; return FOLLOWUPS; }
 async function vInbox(){
-  const {data:f}=await sb.from('followups').select('*').order('received_at',{ascending:false});
-  const rows=f||[];
+  const rows=await loadFollowups();
   const groups=[['todo','To follow up',rows.filter(r=>r.status==='todo')],['waiting','Waiting on them',rows.filter(r=>r.status==='waiting')],['done','Done / ignored',rows.filter(r=>r.status==='done'||r.status==='ignore')]];
   const LBL={todo:'To follow up',waiting:'Waiting',done:'Done',ignore:'Ignore'};
   const card=r=>`<div class="win" style="margin-bottom:10px"><div class="win-body" style="padding:14px 16px">
@@ -721,8 +724,8 @@ async function vInbox(){
   ${rows.length?groups.filter(g=>g[2].length).map(([k,label,list])=>`<div class="tiny muted" style="margin:${k==='todo'?'0':'20px'} 0 8px">${label} · ${list.length}</div>${list.map(card).join('')}`).join('')
     :emptyState('Inbox zero','Real emails that need a reply land here — pulled from Gmail every 30 min. Nothing to follow up on right now.','')}`;
 }
-async function setFollowup(id,status){ await sb.from('followups').update({status}).eq('id',id); render(); }
-async function delFollowup(id){ await sb.from('followups').delete().eq('id',id); render(); }
+async function setFollowup(id,status){ const r=(FOLLOWUPS||[]).find(x=>x.id===id); if(r) r.status=status; vInbox(); const {error}=await sb.from('followups').update({status}).eq('id',id); if(error) toast(error.message); }
+async function delFollowup(id){ if(FOLLOWUPS) FOLLOWUPS=FOLLOWUPS.filter(x=>x.id!==id); vInbox(); const {error}=await sb.from('followups').delete().eq('id',id); if(error) toast(error.message); }
 
 /* ---------- JOBS (private job hunt) ---------- */
 const JSTAGES=['applied','screening','interview','offer','rejected'];
@@ -1025,7 +1028,8 @@ function subscribe(pid){
 
 /* ---------- ACTIONS ---------- */
 async function doStage(pid,s){
-  await sb.from('projects').update({stage:s}).eq('id',pid); PROJECTS=null;
+  const p=(PROJECTS||[]).find(x=>x.id===pid); if(p) p.stage=s;
+  await sb.from('projects').update({stage:s}).eq('id',pid);
   if(s===2) await sb.from('deliverables').update({status:'gate'}).eq('project_id',pid).eq('status','draft');
   if(s===3) await sb.from('deliverables').update({status:'review'}).eq('project_id',pid).eq('status','gate');
   await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'→ Moved to “'+STAGES[s]+'”'});
