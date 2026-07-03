@@ -395,6 +395,8 @@ async function enter(){
 function buildNav(){
   const items = ME.role==='team'
     ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]]
+    : ME.role==='freelancer'
+    ? [['home','My tasks',ICON.folder]]
     : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
     + (ME.role==='team'?`<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`:'');
@@ -407,7 +409,8 @@ async function render(){
   markNav();
   const el=$('#view'); el.innerHTML='<div class="loading"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>'; window.scrollTo(0,0);
   try{
-    if(view.v==='project') await vProject(view.arg);
+    if(ME.role==='freelancer'){ if(view.v==='project') await vFreelancerProject(view.arg); else await vFreelancerHome(); }
+    else if(view.v==='project') await vProject(view.arg);
     else if(view.v==='client'&&ME.role==='team') await vClientDetail(view.arg);
     else if(view.v==='clients'&&ME.role==='team') await vClients();
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
@@ -424,21 +427,33 @@ function stageTracker(p){
   return `<div class="stages">${STAGES.map((s,i)=>{const c=i<p.stage?'done':i===p.stage?'cur':'';return `<div class="stage ${c} ${s==='The Gate'?'gate':''}">${s==='The Gate'?'<span class="gt">HUMAN GATE</span>':''}<div class="dot">${i<p.stage?'✓':i+1}</div><div class="lb">${s}</div></div>`}).join('')}</div>
    <div class="stagenote">${ICON.clock}<div>${NOTE[p.stage]}</div></div>`;
 }
+function dueMeta(p){
+  if(!p||p.stage>=4||!p.due_date) return null;
+  const t=new Date(); t.setHours(0,0,0,0);
+  const d=new Date(p.due_date); d.setHours(0,0,0,0);
+  const days=Math.round((d-t)/86400000);
+  if(days<0) return {cls:'warn',txt:'⚠ Overdue '+(-days)+'d',rank:0};
+  if(days===0) return {cls:'warn',txt:'⚠ Due today',rank:0};
+  if(days<=3) return {cls:'gold',txt:'Due in '+days+'d',rank:1};
+  return null;
+}
 function projCard(p,clientView){
   const c=CLIENTS[p.client_id]||{name:'—'}; const st=STAGES[p.stage];
   const chip=p.stage===4?'ok':p.stage===2?'ink':p.stage===3?'gold':'';
-  const pr=p.priority==='high'?'<span class="chip warn">HIGH</span>':'';
+  const pr=p.priority==='high'?'<span class="chip warn">HIGH</span>':''; const dm=dueMeta(p);
   return `<div class="win pcard" onclick="nav('project','${p.id}')"><div class="win-bar"><span>${clientView?esc(p.type||'PROJECT'):esc(c.name)}</span><span class="dots">+ + +</span></div><div class="win-body">
    <div class="cli"><span class="cav">${ini(c.name)}</span>${clientView?'Aureo Space':esc(c.name)}</div>
    <h3>${esc(p.title)}</h3><div class="pt">${esc(p.type||'')}${p.due_date?' · due '+new Date(p.due_date).toLocaleDateString([], {day:'numeric',month:'short'}):''}</div>
    <div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div>
-   <div class="pfoot"><span class="chip ${chip}">${p.stage===2?'🔒 '+st:st}</span><div style="display:flex;gap:6px;align-items:center">${pr}<span class="tiny muted">${prog(p)}%</span></div></div></div></div>`;
+   <div class="pfoot"><span class="chip ${chip}">${p.stage===2?'🔒 '+st:st}</span><div style="display:flex;gap:6px;align-items:center">${dm?`<span class="chip ${dm.cls}">${dm.txt}</span>`:''}${pr}<span class="tiny muted">${prog(p)}%</span></div></div></div></div>`;
 }
 async function loadProjects(force){ if(PROJECTS&&!force) return PROJECTS; const {data}=await sb.from('projects').select('*').order('created_at',{ascending:false}); PROJECTS=data||[]; return PROJECTS; }
 
 async function vTeamHome(){
   const ps=await loadProjects();
   const attn=ps.filter(p=>p.stage===3);
+  const od=ps.filter(p=>{const d=dueMeta(p);return d&&d.rank===0;});
+  const soon=ps.filter(p=>{const d=dueMeta(p);return d&&d.rank===1;});
   const {data:recent}=await sb.from('messages').select('*').order('created_at',{ascending:false}).limit(6);
   $('#view').innerHTML=`
   <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search projects & clients…" oninput="SEARCH=this.value;filterHome()"></div><button class="btn" onclick="newProject()">+ New project</button></div>
@@ -450,6 +465,8 @@ async function vTeamHome(){
    ${stat(ps.filter(p=>p.stage===3).length,'Awaiting client')}
    ${stat(ps.filter(p=>p.stage===4).length,'Shipped')}
   </div>
+  ${od.length?`<div class="attn" style="border-color:var(--warn)">${ICON.clock}<div><b>${od.length} deliverable${od.length>1?'s':''} overdue or due today</b> — ${esc(od.slice(0,3).map(p=>p.title).join(', '))}${od.length>3?'…':''}. Move or ship them.</div></div>`:''}
+  ${soon.length?`<div class="attn">${ICON.clock}<div>${soon.length} due in the next few days — ${esc(soon.slice(0,3).map(p=>p.title).join(', '))}${soon.length>3?'…':''}.</div></div>`:''}
   ${attn.length?`<div class="attn">${ICON.clock}<div>${attn.length} ${attn.length>1?'projects are':'project is'} in client review — nudge them if it’s been a while.</div></div>`:''}
   <div class="detail-grid">
     <div id="homeProjects">${ps.length?`<div class="grid">${ps.map(p=>projCard(p,false)).join('')}</div>`:emptyState('No projects yet','Add your first client + project.','<button class="btn" onclick="newProject()">+ New project</button>')}</div>
@@ -512,7 +529,7 @@ async function vPipeline(){
    <div class="kbcol ${s==='The Gate'?'gate':''}"><div class="h"><span>${s}</span><span class="c">${col.length}</span></div>
     <div class="body">${col.map(p=>{const c=CLIENTS[p.client_id]||{name:'—'};return `
      <div class="kbcard" onclick="nav('project','${p.id}')">
-      <h4>${esc(p.title)}</h4><div class="m">${esc(c.name)}</div>
+      <h4>${esc(p.title)}</h4><div class="m">${esc(c.name)}</div>${(()=>{const dm=dueMeta(p);return dm?`<span class="chip ${dm.cls}" style="margin-top:6px;display:inline-block">${dm.txt}</span>`:'';})()}
       <div class="mv" onclick="event.stopPropagation()">
        <button ${si===0?'disabled':''} onclick="moveStage('${p.id}',${si-1})">‹</button>
        <button ${si===4?'disabled':''} onclick="moveStage('${p.id}',${si+1})">›</button></div></div>`}).join('')||'<div class="muted" style="font-size:11px;padding:6px">—</div>'}</div></div>`}).join('')}</div>`;
@@ -708,6 +725,45 @@ async function exportCA(){
   toast('Downloaded — ready to send to your CA');
 }
 
+/* ---------- FREELANCER (private, isolated view) ---------- */
+const FSTAT={draft:'In production',gate:'Submitted',review:'With client',approved:'✓ Approved',changes:'↺ Changes requested'};
+async function vFreelancerHome(){
+  const ps=await loadProjects();   // RLS returns ONLY projects assigned to this freelancer
+  $('#view').innerHTML=`
+  <div class="page-h"><div class="eyebrow">Aureo Studio · your workspace</div><h1>Work assigned to you.</h1></div>
+  ${ps.length?`<div class="grid">${ps.map(p=>{const dm=dueMeta(p);return `
+    <div class="win pcard" onclick="nav('project','${p.id}')"><div class="win-bar"><span>TASK</span><span class="dots">+ + +</span></div><div class="win-body">
+     <h3>${esc(p.title)}</h3><div class="pt">${esc(p.type||'')}${p.due_date?' · due '+new Date(p.due_date).toLocaleDateString([], {day:'numeric',month:'short'}):''}</div>
+     <div class="pfoot"><span class="chip">${STAGES[p.stage]}</span>${dm?`<span class="chip ${dm.cls}">${dm.txt}</span>`:''}</div></div></div>`}).join('')}</div>`
+   :emptyState('Nothing assigned yet','When Aureo assigns you a project, it appears here for you to upload your work.','')}`;
+}
+async function vFreelancerProject(id){
+  const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
+  if(!p){ $('#view').innerHTML=`<button class="back" onclick="nav('home')">← Back</button>`+emptyState('Not available','This task isn’t assigned to you.',''); return; }
+  const [{data:items},{data:files}]=await Promise.all([
+    sb.from('deliverables').select('*').eq('project_id',id).order('created_at'),
+    sb.from('files').select('*').eq('project_id',id).order('created_at')
+  ]);
+  const changes=(items||[]).filter(it=>it.status==='changes'&&it.change_note);
+  $('#view').innerHTML=`
+  <button class="back" onclick="nav('home')">← My tasks</button>
+  <div class="page-h"><div class="eyebrow">Task · ${STAGES[p.stage]}${p.due_date?' · due '+new Date(p.due_date).toLocaleDateString([], {day:'numeric',month:'short'}):''}</div><h1>${esc(p.title)}</h1></div>
+  <div class="pt" style="margin:-8px 0 16px">${esc(p.type||'')}</div>
+  ${changes.length?`<div class="attn" style="border-color:var(--warn)">${ICON.clock}<div><b>Changes requested:</b> ${changes.map(c=>esc(c.change_note)).join(' · ')}</div></div>`:''}
+  <div class="detail-grid">
+    <div>${winWrap('YOUR UPLOADS', ((files&&files.length)?files.map(f=>`<div class="filerow">📎 <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a></div>`).join(''):'<div class="muted" style="font-size:13px">No files yet — upload your work below.</div>') + `<button class="btn sm wide" style="margin-top:12px" onclick="fUpload('${p.id}')">+ Upload work (link)</button>`)}</div>
+    <div>${winWrap('DELIVERABLES', (items&&items.length?items.map(it=>`<div class="item"><div class="ic">${it.emoji||'📄'}</div><div class="mt"><b>${esc(it.title)}</b><span>${FSTAT[it.status]||it.status}</span></div></div>`).join(''):'<div class="muted" style="font-size:13px">Aureo will list deliverables here.</div>'))}</div>
+  </div>`;
+}
+function fUpload(pid){ modal('Upload your work',`<div class="tiny muted" style="margin-bottom:8px">Paste a share link (Drive / Frame.io / WeTransfer / Dropbox).</div><label>Label</label><input id="fuN" placeholder="Reel 03 — v1"><label>Link</label><input id="fuU" placeholder="https://"><button class="btn wide" style="margin-top:14px" onclick="doFUpload('${pid}')">Upload</button>`); }
+async function doFUpload(pid){ const n=$('#fuN').value.trim(),u=$('#fuU').value.trim(); if(!n||!u){toast('Label + link needed');return;} const {error}=await sb.from('files').insert({project_id:pid,name:n,url:u}); if(error){toast(error.message);return;} closeModal(); toast('Uploaded — Aureo will review'); render(); }
+async function assignFreelancer(pid){
+  const [{data:fl},{data:pr}]=await Promise.all([ sb.from('profiles').select('id,name').eq('role','freelancer'), sb.from('projects').select('freelancer_id').eq('id',pid).single() ]);
+  const opts=(fl||[]).map(f=>`<option value="${f.id}" ${pr&&pr.freelancer_id===f.id?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
+  modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">The client never sees this — the uploaded work just appears as Aureo's.</div><label>Freelancer</label><select id="afS"><option value="">— none —</option>${opts}</select>${(fl&&fl.length)?'':`<div class="tiny muted" style="margin-top:8px">No freelancer logins yet. In Supabase → Auth invite their email, then set that profile's role to <b>freelancer</b>.</div>`}<button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Save</button>`);
+}
+async function doAssignFreelancer(pid){ const fid=$('#afS').value||null; const {error}=await sb.from('projects').update({freelancer_id:fid}).eq('id',pid); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast(fid?'Freelancer assigned':'Assignment cleared'); render(); }
+
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
   if(!p){ $('#view').innerHTML=`<button class="back" onclick="nav('home')">← Back</button>`+emptyState('Not found','You may not have access to this project.',''); return; }
@@ -722,7 +778,7 @@ async function vProject(id){
   $('#view').innerHTML=`
   <button class="back" onclick="nav('${team?'home':'home'}')">← ${team?'Dashboard':'My work'}</button>
   <div class="page-h" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><div class="eyebrow">${esc(c.name)} · ${esc(p.type||'')}</div><h1>${esc(p.title)}</h1></div>
-   ${team?`<div style="display:flex;gap:8px"><button class="btn ghost sm" onclick="editProject('${p.id}')">Edit</button></div>`:''}</div>
+   ${team?`<div style="display:flex;gap:8px"><button class="btn ghost sm" onclick="assignFreelancer('${p.id}')">Assign freelancer</button><button class="btn ghost sm" onclick="editProject('${p.id}')">Edit</button></div>`:''}</div>
   ${winWrap('PROGRESS', stageTracker(p) + (team?`<div class="stagectl">${STAGES.map((s,i)=>`<button class="${i===p.stage?'on':''} ${s==='The Gate'?'gate':''}" onclick="moveStageHere('${p.id}',${i})">${s}</button>`).join('')}</div>`:''))}
   <div style="height:18px"></div>
   <div class="detail-grid">
@@ -771,7 +827,7 @@ async function sendMsg(pid){ const ta=$('#msgIn'); const b=ta.value.trim(); if(!
   const {data}=await sb.from('messages').select('*').eq('project_id',pid).order('created_at'); const box=$('#msgs'); if(box){box.innerHTML=renderMsgs(data||[]);box.scrollTop=box.scrollHeight;} }
 async function approve(itid,pid){ await sb.from('deliverables').update({status:'approved'}).eq('id',itid); await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'✓ Approved — looks great!'}); toast('Approved — thank you!'); render(); }
 function reqChange(itid,pid){ modal('Request a change',`<textarea id="chg" rows="4" placeholder="e.g. Use the peach background on slide 4"></textarea><button class="btn wide" style="margin-top:14px" onclick="doChange('${itid}','${pid}')">Send request</button>`); }
-async function doChange(itid,pid){ const t=$('#chg').value.trim(); await sb.from('deliverables').update({status:'changes'}).eq('id',itid); await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'↺ Change requested: '+(t||'please revise')}); closeModal(); toast('Sent to the studio'); render(); }
+async function doChange(itid,pid){ const t=$('#chg').value.trim(); await sb.from('deliverables').update({status:'changes',change_note:t||'Please revise'}).eq('id',itid); await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'↺ Change requested: '+(t||'please revise')}); closeModal(); toast('Sent to the studio'); render(); }
 function newClient(){ modal('New client',`<label>Brand name</label><input id="ncN" placeholder="Maison Bloom"><label>Contact person</label><input id="ncC" placeholder="Priya Nair"><div class="two"><div><label>City</label><input id="ncCity" placeholder="Bangalore"></div><div><label>Website</label><input id="ncW" placeholder="https://"></div></div><label>Notes</label><textarea id="ncNotes" rows="2"></textarea><button class="btn wide" style="margin-top:14px" onclick="doNewClient()">Create client</button>`); }
 async function doNewClient(){ const name=$('#ncN').value.trim(); if(!name){toast('Give it a name');return;}
   const {data,error}=await sb.from('clients').insert({name,contact:$('#ncC').value.trim(),city:$('#ncCity').value.trim(),website:$('#ncW').value.trim(),notes:$('#ncNotes').value.trim()}).select().single();
