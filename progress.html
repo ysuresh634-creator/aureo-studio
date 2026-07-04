@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4f1ea">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <title>Project progress · Aureo</title>
 <style>
   :root{--ink:#16181D;--cream:#f4f1ea;--gold:#FFCC00;--win:#fffdf7;--muted:#8a857c;--line:#e6e1d6;--ok:#1c7a3d;--blue:#1746c4}
@@ -50,22 +52,25 @@
 </head>
 <body>
 <div id="app"><div class="msg">Loading your project…</div></div>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
-firebase.initializeApp({apiKey:"AIzaSyCoZeSI-3RsX3tJdCc6jiQLU3AeZU_qgY4",authDomain:"aureo-studio-5aa35.firebaseapp.com",projectId:"aureo-studio-5aa35",storageBucket:"aureo-studio-5aa35.firebasestorage.app",messagingSenderId:"523812913751",appId:"1:523812913751:web:5f788617a5c2c0939c9912"});
-const db=firebase.firestore();
+/* Zero dependencies — talks to Firestore over plain REST via fetch(). No SDK, no fonts, ~10KB total. Loads instantly on any device. */
+const BASE='https://firestore.googleapis.com/v1/projects/aureo-studio-5aa35/databases/(default)/documents';
 const TOK=new URLSearchParams(location.search).get('s');
+function uw(v){ if(v==null)return null; if('stringValue'in v)return v.stringValue; if('integerValue'in v)return parseInt(v.integerValue,10); if('doubleValue'in v)return v.doubleValue; if('booleanValue'in v)return v.booleanValue; if('nullValue'in v)return null; if('timestampValue'in v)return v.timestampValue; if('arrayValue'in v)return (v.arrayValue.values||[]).map(uw); if('mapValue'in v){ const o={}, f=v.mapValue.fields||{}; for(const k in f)o[k]=uw(f[k]); return o; } return null; }
+function unwrapDoc(d){ const o={}, f=(d&&d.fields)||{}; for(const k in f)o[k]=uw(f[k]); return o; }
+function wr(val){ if(val===null||val===undefined)return {nullValue:null}; if(typeof val==='string')return {stringValue:val}; if(typeof val==='boolean')return {booleanValue:val}; if(typeof val==='number')return Number.isInteger(val)?{integerValue:String(val)}:{doubleValue:val}; if(Array.isArray(val))return {arrayValue:{values:val.map(wr)}}; if(typeof val==='object'){ const fields={}; for(const k in val)fields[k]=wr(val[k]); return {mapValue:{fields}}; } return {nullValue:null}; }
 const STAGES=['Brief','Production','The Gate','Client Review','Shipped'];
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const app=document.getElementById('app');
 function msg(t){ app.innerHTML='<div class="msg">'+esc(t)+'</div>'; }
 async function load(){
   if(!TOK){ msg('This link is invalid.'); return; }
-  let s;
-  try{ const d=await db.collection('shares').doc(TOK).get(); if(!d.exists){ msg('This link is no longer active.'); return; } s=d.data(); }
-  catch(e){ msg('Could not load — please try again in a moment.'); return; }
-  render(s);
+  try{
+    const r=await fetch(BASE+'/shares/'+encodeURIComponent(TOK),{cache:'no-store'});
+    if(r.status===404){ msg('This link is no longer active.'); return; }
+    if(!r.ok){ msg('Could not load — please refresh.'); return; }
+    render(unwrapDoc(await r.json()));
+  }catch(e){ msg('Could not load — check your connection and refresh.'); }
 }
 const SLBL={draft:'in progress',gate:'in progress',review:'ready for you',approved:'approved',changes:'revising'};
 function render(s){
@@ -96,8 +101,10 @@ window.act=async function(itemId,action){
   const ta=document.getElementById('fb_'+itemId); const note=ta?ta.value.trim():'';
   const cur=(window.__s&&window.__s.client_action)?Object.assign({},window.__s.client_action):{};
   cur[itemId]={action:action,note:note,at:new Date().toISOString()};
-  try{ await db.collection('shares').doc(TOK).update({client_action:cur,updated_at:new Date().toISOString()}); }catch(e){}
-  load();
+  if(window.__s){ window.__s.client_action=cur; render(window.__s); } /* optimistic — instant, no waiting on the network */
+  const body={fields:{client_action:wr(cur),updated_at:wr(new Date().toISOString())}};
+  const url=BASE+'/shares/'+encodeURIComponent(TOK)+'?updateMask.fieldPaths=client_action&updateMask.fieldPaths=updated_at';
+  for(let a=0;a<3;a++){ try{ const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(r.ok) break; }catch(e){} await new Promise(res=>setTimeout(res,600*(a+1))); }
 };
 load();
 </script>
