@@ -454,8 +454,9 @@ window.migrate=async function(){
   const {data:{session}}=await old.auth.getSession();
   if(!session){ alert('Not logged into the OLD Supabase app in this browser. Open studio.yksproductions.com/index.html, log in there, then come back and click Import again.'); return; }
   const tables=['clients','projects','deliverables','files','messages','tasks','followups','jobs','invoices','payouts','transactions','budgets','fin_settings','recurring','accounts'];
-  const rep=[]; if(typeof toast==='function') toast('Importing…');
-  for(const t of tables){ const {data,error}=await old.from(t).select('*'); if(error){ rep.push(t+': ERR '+error.message); continue; } let n=0; for(const row of (data||[])){ const id=row.id!=null?String(row.id):(row.category!=null?String(row.category):fdb.collection(t).doc().id); await fdb.collection(t).doc(id).set(row); n++; } rep.push(t+': '+n); }
+  const rep=[]; if(typeof toast==='function') toast('Importing… keep this tab open');
+  async function pull(t){ for(let a=0;a<5;a++){ try{ const {data,error}=await old.from(t).select('*'); if(!error) return data||[]; }catch(e){} await new Promise(r=>setTimeout(r,900*(a+1))); } return null; }
+  for(const t of tables){ const data=await pull(t); if(data===null){ rep.push(t+': ⚠ FAILED (Supabase unreachable — retry later)'); continue; } let n=0; for(const row of data){ try{ const id=row.id!=null?String(row.id):(row.category!=null?String(row.category):fdb.collection(t).doc().id); await fdb.collection(t).doc(id).set(row); n++; }catch(e){} } rep.push(t+': '+n); }
   MONEY=null;PROJECTS=null;JOBS=null;INV=null;FOLLOWUPS=null;
   alert('Import complete:\n\n'+rep.join('\n')+'\n\nReloading…'); location.reload();
 };
