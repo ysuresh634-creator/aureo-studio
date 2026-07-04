@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aureo · Content + Ads (Demo)</title>
+<style>
+  :root{--ink:#16181D;--cream:#f6f4ef;--win:#fffdf7;--gold:#FFCC00;--muted:#8a857c;--line:rgba(22,24,29,.12);--sec:#4a4a42;--ok:#1c7a3d;--blue:#4a7cff;--purple:#7c5cff;--warn:#e8590c;--meta:#0866ff;--g:#34a853;
+    --sh:0 1px 2px rgba(22,24,29,.05),0 6px 22px rgba(22,24,29,.06);--sh-lg:0 16px 44px rgba(22,24,29,.16)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 72px}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .logo{width:30px;height:30px;border-radius:50%;background:var(--gold);border:2px solid var(--ink)}
+  .brand{font-weight:800;font-size:18px}
+  .live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font:800 11px ui-monospace,monospace;color:var(--ok);text-transform:uppercase;letter-spacing:.06em}
+  .live .p{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(28,122,61,.45)}70%{box-shadow:0 0 0 7px rgba(28,122,61,0)}100%{box-shadow:0 0 0 0 rgba(28,122,61,0)}}
+  h1{font-size:32px;letter-spacing:-.5px;margin:18px 0 2px}
+  .ey{font:800 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .demoTag{display:inline-block;background:var(--gold);border:1.5px solid var(--ink);border-radius:999px;font:800 10px ui-monospace,monospace;padding:2px 9px;margin-left:8px;vertical-align:middle}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:11px;margin:20px 0}
+  .kpi{background:var(--win);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:14px 16px}
+  .kpi b{display:block;font-size:24px;font-weight:800;line-height:1}
+  .kpi span{font:800 10px ui-monospace,monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:5px;display:block}
+  .kpi small{color:var(--ok);font-weight:700}
+  .tabs{display:flex;gap:7px;flex-wrap:wrap;margin:6px 0 18px}
+  .tabs button{border:1.5px solid var(--line);background:var(--win);border-radius:11px;font:800 12px ui-monospace,monospace;padding:9px 14px;cursor:pointer;color:var(--ink)}
+  .tabs button.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+  .sub{color:var(--muted);font-size:13px;margin:-4px 0 14px;max-width:720px;line-height:1.5}
+  /* generic */
+  .card{background:var(--win);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:20px;margin-bottom:14px}
+  h3{font:800 11px ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:24px 0 12px}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px}
+  .m2{background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:12px 14px}
+  .m2 b{display:block;font-size:21px;font-weight:800;line-height:1}
+  .m2 span{font:700 10px ui-monospace,monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;display:block}
+  .m2 .hint{font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin-top:3px}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{font:800 10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  td.name{font-weight:700}
+  tr.tot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:800}
+  .tablewrap{overflow-x:auto}
+  /* calendar */
+  .cal{background:var(--win);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);overflow:hidden}
+  .calh{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(22,24,29,.03);border-bottom:1px solid var(--line)}
+  .calh span{padding:10px;font:800 10.5px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .calb{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cell{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px}
+  .cell:nth-child(7n){border-right:none}
+  .cell.out{background:rgba(22,24,29,.02)}.cell.out .dn{opacity:.3}
+  .cell.today .dn{background:var(--gold);border-radius:7px;padding:0 6px}
+  .dn{font:800 12px ui-monospace,monospace;color:var(--sec)}
+  .chip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;padding:4px 7px;margin-top:5px;font:600 11px inherit;cursor:pointer;background:var(--win);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip:hover{border-color:var(--ink)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  /* rows */
+  .row{display:flex;align-items:center;gap:13px;background:var(--win);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:13px 15px;margin-bottom:10px}
+  .row .em{font-size:22px}.row .m{flex:1;min-width:0}
+  .row .t{font-weight:700;font-size:15px}.row .s{font:12px ui-monospace,monospace;color:var(--muted);margin-top:2px}
+  .pill{font:800 9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:999px;border:1.5px solid var(--ink)}
+  .metrics{display:flex;gap:16px;flex-wrap:wrap;margin-top:9px}
+  .met{font:12px ui-monospace,monospace;color:var(--sec)}.met b{color:var(--ink)}
+  .fb{margin-top:11px}.fb textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px;font:14px inherit;resize:vertical;min-height:46px}
+  .fbrow{display:flex;gap:9px;margin-top:9px;flex-wrap:wrap}
+  .btn{border:2px solid var(--ink);border-radius:11px;padding:9px 16px;font:800 13px inherit;cursor:pointer;background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
+  .btn.ghost{background:var(--win)}.btn:active{transform:translate(2px,2px);box-shadow:none}
+  .done{margin-top:11px;font-weight:700;font-size:13px;padding:9px 12px;border-radius:10px}
+  .done.ok{background:#e2f6e8;color:var(--ok)} .done.ch{background:#fff3d4;color:#8a6300}
+  /* charts */
+  .barrow{display:flex;align-items:flex-end;gap:14px;height:150px;padding:8px 4px 0}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
+  .bar .b{width:66%;border-radius:6px 6px 0 0}
+  .bar .l{font:11px ui-monospace,monospace;color:var(--muted);text-align:center}.bar .v{font:800 11px ui-monospace,monospace}
+  .split{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+  .split div{display:flex;align-items:center;justify-content:center;color:#fff;font:800 11px ui-monospace,monospace}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font:11px ui-monospace,monospace;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .best{display:flex;gap:14px;align-items:center;background:linear-gradient(90deg,#fff8dd,#fffdf7);border:1.5px solid var(--gold);border-radius:16px;padding:16px;margin-bottom:14px}
+  .best .em{font-size:30px}
+  .badge{display:inline-flex;align-items:center;gap:6px;font:800 11px ui-monospace,monospace;padding:4px 10px;border-radius:999px;color:#fff}
+  .note{color:var(--muted);font-size:13px;margin-top:26px;line-height:1.6}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="logo"></div><div class="brand">Aureo</div><span class="live"><span class="p"></span>Live</span></div>
+  <div class="ey">Studio Bloom · Pilates &amp; Barre, Bangalore · July 2026</div>
+  <h1>Content + Ads report.<span class="demoTag">DEMO</span></h1>
+  <div id="kpis" class="kpis"></div>
+  <div class="tabs">
+    <button id="tOver" class="on" onclick="tab('over')">📈 Overview</button>
+    <button id="tCal" onclick="tab('cal')">▦ Calendar</button>
+    <button id="tPlan" onclick="tab('plan')">🗓 Planner</button>
+    <button id="tOrg" onclick="tab('org')">📊 Organic</button>
+    <button id="tMeta" onclick="tab('meta')">📣 Meta Ads</button>
+    <button id="tG" onclick="tab('g')">🔍 Google Ads</button>
+  </div>
+  <div id="over"></div>
+  <div id="cal" class="hide"></div>
+  <div id="plan" class="hide"></div>
+  <div id="org" class="hide"></div>
+  <div id="meta" class="hide"></div>
+  <div id="g" class="hide"></div>
+  <div class="note">Sample data for a made-up studio — everything is marked <b>DEMO</b>. In the live app, the organic post numbers come from Instagram/YouTube, and the Meta &amp; Google figures come straight from the ad accounts once they’re connected. The client sees this exact report — spend, results, and what’s coming next — with full transparency.</div>
+</div>
+<script>
+const MONTH=6, YEAR=2026, TODAY='2026-07-04';
+const STC={Idea:'#8a857c',Drafting:'#4a7cff',Review:'#e8590c',Scheduled:'#7c5cff',Posted:'#1c7a3d'};
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function em(p){p=(p||'').toLowerCase();return p.indexOf('reel')>-1?'🎬':p.indexOf('story')>-1?'⚡':p.indexOf('carousel')>-1?'🖼️':p.indexOf('yt')>-1||p.indexOf('youtube')>-1?'▶️':'📸';}
+function pd(d){const x=new Date(d+'T00:00:00');return x.toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short'});}
+function nf(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':String(n);}
+function fm(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
+function fmk(n){return n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(1)+'k':'₹'+n;}
+
+/* ---------- ORGANIC POSTS ---------- */
+let POSTS=[
+ {id:'a1',date:'2026-06-24',platform:'Reel',caption:'“Why your core hates you” — form-fix reel',status:'Posted',reach:18400,likes:1620,comments:143,saves:512,fb:'approved'},
+ {id:'a2',date:'2026-06-27',platform:'Carousel',caption:'5 posture fixes for desk workers',status:'Posted',reach:9200,likes:740,comments:38,saves:410,fb:'approved'},
+ {id:'a3',date:'2026-06-30',platform:'Reel',caption:'Client transformation — 12 weeks',status:'Posted',reach:31200,likes:2870,comments:265,saves:980,fb:'approved'},
+ {id:'a4',date:'2026-07-02',platform:'Story',caption:'BTS: new reformer setup',status:'Posted',reach:4100,likes:210,comments:12,saves:22,fb:null},
+ {id:'a5',date:'2026-07-06',platform:'Reel',caption:'“Monday reset” — 30-sec breathwork',status:'Review'},
+ {id:'a6',date:'2026-07-09',platform:'Carousel',caption:'Beginner vs advanced: the plank',status:'Review'},
+ {id:'a7',date:'2026-07-11',platform:'Reel',caption:'Meet your instructor — Aditi',status:'Scheduled'},
+ {id:'a8',date:'2026-07-14',platform:'Story',caption:'Poll: morning or evening classes?',status:'Scheduled'},
+ {id:'a9',date:'2026-07-17',platform:'Reel',caption:'Myth-busting: “Pilates isn’t a real workout”',status:'Idea'},
+ {id:'a10',date:'2026-07-21',platform:'Carousel',caption:'July member spotlight',status:'Idea'},
+ {id:'a11',date:'2026-07-25',platform:'Reel',caption:'3 stretches before bed',status:'Idea'}
+];
+/* ---------- META ADS ---------- */
+const META={campaigns:[
+  {name:'Trial Class — Lead Gen',obj:'Leads',spend:42300,reach:128400,impr:341200,freq:2.7,clicks:6820,ctr:2.0,cpc:6.2,cpm:124,results:214,rlabel:'Leads',cpr:198},
+  {name:'Reels Boost — Awareness',obj:'ThruPlays',spend:18900,reach:96300,impr:210500,freq:2.2,clicks:3120,ctr:1.48,cpc:6.1,cpm:90,results:41200,rlabel:'3-sec views',cpr:0.46},
+  {name:'Retargeting — Memberships',obj:'Purchases',spend:15600,reach:22100,impr:88700,freq:4.0,clicks:1940,ctr:2.19,cpc:8.0,cpm:176,results:38,rlabel:'Memberships',cpr:410,value:152000}
+]};
+/* ---------- GOOGLE ADS ---------- */
+const GADS={campaigns:[
+  {name:'Search — “pilates near me”',type:'Search',cost:31200,impr:48900,clicks:2140,ctr:4.38,cpc:14.6,conv:96,convrate:4.5,cpa:325,value:288000,is:62},
+  {name:'Performance Max',type:'PMax',cost:22400,impr:132000,clicks:3010,ctr:2.28,cpc:7.4,conv:71,convrate:2.36,cpa:315,value:213000,is:48},
+  {name:'YouTube — Brand',type:'Video',cost:9800,impr:210400,clicks:640,ctr:0.30,cpc:15.3,conv:12,convrate:1.88,cpa:817,value:36000,is:null}
+]};
+
+let TAB='over';
+function sum(a,f){return a.reduce((s,x)=>s+(f(x)||0),0);}
+function metaTot(){const c=META.campaigns;return {spend:sum(c,x=>x.spend),reach:sum(c,x=>x.reach),impr:sum(c,x=>x.impr),clicks:sum(c,x=>x.clicks),leads:c[0].results,purch:c[2].results,value:sum(c,x=>x.value||0)};}
+function gTot(){const c=GADS.campaigns;return {cost:sum(c,x=>x.cost),impr:sum(c,x=>x.impr),clicks:sum(c,x=>x.clicks),conv:sum(c,x=>x.conv),value:sum(c,x=>x.value||0)};}
+function orgTot(){const p=POSTS.filter(x=>x.status==='Posted');return {posted:p.length,reach:sum(p,x=>x.reach),eng:sum(p,x=>(x.likes||0)+(x.comments||0)+(x.saves||0)),rev:['a1']};}
+
+/* ---------- top KPI strip (blended) ---------- */
+function renderKpis(){
+  const m=metaTot(),gg=gTot(),o=orgTot();
+  const spend=m.spend+gg.cost;const leads=m.leads+gg.conv;const rev=m.value+gg.value;const roas=(rev/spend);
+  document.getElementById('kpis').innerHTML=
+   kpi(fmk(spend),'Ad spend','Meta + Google')+
+   kpi(nf(o.reach+m.reach+gg.impr),'Total reach','organic + paid')+
+   kpi(leads,'Leads / signups','from ads')+
+   kpi(roas.toFixed(1)+'x','Blended ROAS','revenue ÷ spend')+
+   kpi(fm(Math.round(spend/leads)),'Cost per lead','blended')+
+   kpi(o.posted+'','Posts published','this cycle');
+}
+function kpi(v,l,sub){return `<div class="kpi"><b>${v}</b><span>${l}</span>${sub?`<small>${sub}</small>`:''}</div>`;}
+function m2(v,l,hint){return `<div class="m2"><b>${v}</b><span>${l}</span>${hint?`<div class="hint">${hint}</div>`:''}</div>`;}
+
+/* ---------- OVERVIEW ---------- */
+function renderOver(){
+  const m=metaTot(),gg=gTot(),o=orgTot();
+  const spend=m.spend+gg.cost;const rev=m.value+gg.value;const roas=(rev/spend);
+  const metaPct=Math.round(m.spend/spend*100),gPct=100-metaPct;
+  document.getElementById('over').innerHTML=`
+  <div class="sub">The whole month at a glance — what we spent, what came back, and where it came from.</div>
+  <div class="card"><div class="ey" style="margin-bottom:10px">Money in vs. money out</div>
+    <div class="mgrid">
+      ${m2(fmk(spend),'Total ad spend')}
+      ${m2(fmk(rev),'Revenue attributed','sales + memberships tracked')}
+      ${m2(roas.toFixed(1)+'x','Return on ad spend','₹'+roas.toFixed(1)+' back per ₹1')}
+      ${m2(m.leads+gg.conv,'Leads + conversions')}
+    </div>
+    <h3>Where the budget went</h3>
+    <div class="split"><div style="width:${metaPct}%;background:var(--meta)">Meta ${metaPct}%</div><div style="width:${gPct}%;background:var(--g)">Google ${gPct}%</div></div>
+    <div class="legend"><span><span class="dot" style="background:var(--meta)"></span>Meta Ads ${fmk(m.spend)}</span><span><span class="dot" style="background:var(--g)"></span>Google Ads ${fmk(gg.cost)}</span></div>
+  </div>
+  <div class="card"><div class="ey" style="margin-bottom:6px">Reach by channel</div>
+    <div class="barrow">${bar('Organic',o.reach,'#7c5cff')}${bar('Meta Ads',m.reach,'#0866ff')}${bar('Google',gg.impr,'#34a853')}</div>
+  </div>
+  <div class="card"><div class="ey" style="margin-bottom:10px">Three-line summary for the client</div>
+    <div style="font-size:15px;line-height:1.7">
+    • We published <b>${o.posted} posts</b> that reached <b>${nf(o.reach)}</b> people for free.<br>
+    • We ran <b>${fmk(spend)}</b> in ads → <b>${m.leads+gg.conv} leads/signups</b> and <b>${fmk(rev)}</b> in tracked revenue (<b>${roas.toFixed(1)}x</b> return).<br>
+    • <b>${POSTS.filter(p=>p.status!=='Posted').length} more posts</b> are planned — a few are waiting on your approval.
+    </div>
+  </div>`;
+}
+function bar(l,v,c){return `<div class="bar"><div class="v">${nf(v)}</div><div class="b" style="height:${Math.round(v/Math.max(v,1)*100)}%;background:${c}"></div><div class="l">${l}</div></div>`;}
+function barsScaled(items){const max=Math.max(1,...items.map(x=>x.v));return items.map(x=>`<div class="bar"><div class="v">${x.disp||nf(x.v)}</div><div class="b" style="height:${Math.round(x.v/max*100)}%;background:${x.c}"></div><div class="l">${x.l}</div></div>`).join('');}
+
+/* ---------- META ADS ---------- */
+function renderMeta(){
+  const t=metaTot();const roas=t.value/t.spend;
+  const rows=META.campaigns.map(c=>`<tr><td class="name">${esc(c.name)}<div style="font-weight:400;color:var(--muted);font-size:11px">${c.obj}</div></td><td>${fm(c.spend)}</td><td>${nf(c.reach)}</td><td>${nf(c.impr)}</td><td>${c.ctr}%</td><td>${fm(c.cpc)}</td><td>${fm(c.cpm)}</td><td>${nf(c.results)} ${c.rlabel}</td><td>${c.cpr<1?'₹'+c.cpr:fm(c.cpr)}</td></tr>`).join('');
+  document.getElementById('meta').innerHTML=`
+  <div class="sub"><span class="badge" style="background:var(--meta)">Meta Ads</span> Instagram + Facebook ads. “CTR” = share of people who clicked; “CPM” = cost per 1,000 views; “ROAS” = revenue per ₹1 spent.</div>
+  <div class="card"><div class="mgrid">
+    ${m2(fm(t.spend),'Amount spent')}
+    ${m2(nf(t.reach),'People reached')}
+    ${m2(nf(t.clicks),'Link clicks')}
+    ${m2(t.leads,'Leads','Trial-class form fills')}
+    ${m2(t.purch,'Memberships','purchases')}
+    ${m2(roas.toFixed(1)+'x','ROAS',fmk(t.value)+' revenue')}
+  </div></div>
+  <div class="card"><div class="ey" style="margin-bottom:6px">Spend by campaign</div><div class="barrow">${barsScaled(META.campaigns.map(c=>({l:c.name.split(' ')[0],v:c.spend,disp:fmk(c.spend),c:'#0866ff'})))}</div></div>
+  <h3>Campaign breakdown</h3>
+  <div class="card" style="padding:6px 14px"><div class="tablewrap"><table>
+    <tr><th>Campaign</th><th>Spend</th><th>Reach</th><th>Impr.</th><th>CTR</th><th>CPC</th><th>CPM</th><th>Results</th><th>Cost/result</th></tr>
+    ${rows}
+    <tr class="tot"><td>Total</td><td>${fm(t.spend)}</td><td>${nf(t.reach)}</td><td>${nf(t.impr)}</td><td>—</td><td>—</td><td>—</td><td>${t.leads} leads · ${t.purch} memb.</td><td>—</td></tr>
+  </table></div></div>`;
+}
+/* ---------- GOOGLE ADS ---------- */
+function renderG(){
+  const t=gTot();const roas=t.value/t.cost;
+  const rows=GADS.campaigns.map(c=>`<tr><td class="name">${esc(c.name)}<div style="font-weight:400;color:var(--muted);font-size:11px">${c.type}</div></td><td>${fm(c.cost)}</td><td>${nf(c.impr)}</td><td>${nf(c.clicks)}</td><td>${c.ctr}%</td><td>${fm(c.cpc)}</td><td>${c.conv}</td><td>${fm(c.cpa)}</td><td>${c.is==null?'—':c.is+'%'}</td></tr>`).join('');
+  document.getElementById('g').innerHTML=`
+  <div class="sub"><span class="badge" style="background:var(--g)">Google Ads</span> Search, Performance Max &amp; YouTube. “Conversions” = signups/bookings; “Cost/conv.” = cost per one; “Impr. share” = % of searches you showed up for.</div>
+  <div class="card"><div class="mgrid">
+    ${m2(fm(t.cost),'Cost')}
+    ${m2(nf(t.impr),'Impressions')}
+    ${m2(nf(t.clicks),'Clicks')}
+    ${m2(t.conv,'Conversions','bookings + signups')}
+    ${m2(fm(Math.round(t.cost/t.conv)),'Cost / conversion')}
+    ${m2(roas.toFixed(1)+'x','ROAS',fmk(t.value)+' revenue')}
+  </div></div>
+  <div class="card"><div class="ey" style="margin-bottom:6px">Conversions by campaign</div><div class="barrow">${barsScaled(GADS.campaigns.map(c=>({l:c.type,v:c.conv,disp:c.conv+'',c:'#34a853'})))}</div></div>
+  <h3>Campaign breakdown</h3>
+  <div class="card" style="padding:6px 14px"><div class="tablewrap"><table>
+    <tr><th>Campaign</th><th>Cost</th><th>Impr.</th><th>Clicks</th><th>CTR</th><th>Avg CPC</th><th>Conv.</th><th>Cost/conv.</th><th>Impr. share</th></tr>
+    ${rows}
+    <tr class="tot"><td>Total</td><td>${fm(t.cost)}</td><td>${nf(t.impr)}</td><td>${nf(t.clicks)}</td><td>—</td><td>—</td><td>${t.conv}</td><td>${fm(Math.round(t.cost/t.conv))}</td><td>—</td></tr>
+  </table></div></div>`;
+}
+/* ---------- ORGANIC ---------- */
+function renderOrg(){
+  const posted=POSTS.filter(p=>p.status==='Posted').slice().sort((a,b)=>b.reach-a.reach);const best=posted[0];
+  const plat={};posted.forEach(p=>{plat[p.platform]=(plat[p.platform]||0)+p.reach;});
+  document.getElementById('org').innerHTML=`
+  <div class="sub">Free (unpaid) posts and how they performed on Instagram.</div>
+  <div class="best"><span class="em">🏆</span><div><div class="ey">Best performing post</div><div style="font-weight:800;font-size:16px">${esc(best.caption)}</div><div class="metrics"><span class="met"><b>${nf(best.reach)}</b> reach</span><span class="met"><b>${nf(best.likes)}</b> likes</span><span class="met"><b>${best.comments}</b> comments</span><span class="met"><b>${nf(best.saves)}</b> saves</span></div></div></div>
+  <div class="card"><div class="ey" style="margin-bottom:6px">Reach by format</div><div class="barrow">${barsScaled(Object.keys(plat).map(k=>({l:k,v:plat[k],disp:nf(plat[k]),c:k.toLowerCase().indexOf('reel')>-1?'#7c5cff':k.toLowerCase().indexOf('carousel')>-1?'#4a7cff':'#1c7a3d'})))}</div></div>
+  <h3>Every post we’ve published</h3>
+  ${posted.map(p=>`<div class="row" style="flex-wrap:wrap"><span class="em">${em(p.platform)}</span><div class="m"><div class="t">${esc(p.caption)}</div><div class="s">${p.platform} · ${pd(p.date)}</div><div class="metrics"><span class="met">👁 <b>${nf(p.reach)}</b></span><span class="met">❤️ <b>${nf(p.likes)}</b></span><span class="met">💬 <b>${p.comments}</b></span><span class="met">🔖 <b>${nf(p.saves)}</b></span></div></div>${p.fb==='approved'?'<span class="pill" style="background:#e2f6e8;color:#1c7a3d">✓ Approved</span>':''}</div>`).join('')}`;
+}
+/* ---------- CALENDAR ---------- */
+function renderCal(){
+  const dow=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const first=new Date(YEAR,MONTH,1);const lead=(first.getDay()+6)%7;const start=new Date(YEAR,MONTH,1-lead);
+  const days=new Date(YEAR,MONTH+1,0).getDate();const weeks=Math.ceil((lead+days)/7);
+  const byDay={};POSTS.forEach(p=>{(byDay[p.date]=byDay[p.date]||[]).push(p);});
+  let cells='';
+  for(let i=0;i<weeks*7;i++){const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const out=d.getMonth()!==MONTH;const posts=byDay[key]||[];
+    cells+=`<div class="cell${out?' out':''}${key===TODAY?' today':''}"><span class="dn">${d.getDate()}</span>${posts.map(p=>`<div class="chip" onclick="tab('${p.status==='Posted'?'org':'plan'}')"><span class="dot" style="background:${STC[p.status]}"></span>${em(p.platform)} ${esc(p.caption).slice(0,15)}</div>`).join('')}</div>`;
+  }
+  document.getElementById('cal').innerHTML=`<div class="sub">What’s going out and when — colour shows the stage.</div><div class="cal"><div class="calh">${dow.map(x=>`<span>${x}</span>`).join('')}</div><div class="calb">${cells}</div></div>
+   <div class="legend">${Object.keys(STC).map(s=>`<span><span class="dot" style="background:${STC[s]}"></span>${s}</span>`).join('')}</div>`;
+}
+/* ---------- PLANNER ---------- */
+function renderPlan(){
+  const up=POSTS.filter(p=>p.status!=='Posted').sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('plan').innerHTML=`<div class="sub">Upcoming posts. The client approves each one — or asks for a tweak — before it goes live.</div>`+up.map(p=>{
+    const allow=(p.status==='Review'||p.status==='Scheduled');let panel='';
+    if(p.fb){panel=`<div class="done ${p.fb==='approved'?'ok':'ch'}">${p.fb==='approved'?'✓ You approved this':'↺ You asked for a change'}</div>`;}
+    else if(allow){panel=`<div class="fb"><textarea id="ta_${p.id}" placeholder="Love it, or want a tweak? (leave blank to approve)"></textarea><div class="fbrow"><button class="btn" onclick="approve('${p.id}')">✓ Approve</button><button class="btn ghost" onclick="changes('${p.id}')">✏️ Request a change</button></div></div>`;}
+    return `<div class="row" style="flex-wrap:wrap"><span class="em">${em(p.platform)}</span><div class="m"><div class="t">${esc(p.caption)}</div><div class="s">${p.platform} · ${pd(p.date)}</div></div><span class="pill" style="background:${STC[p.status]}1f;color:${STC[p.status]}">${p.status}</span><div style="flex-basis:100%">${panel}</div></div>`;
+  }).join('');
+}
+function renderAll(){renderKpis();renderOver();renderCal();renderPlan();renderOrg();renderMeta();renderG();}
+function tab(t){TAB=t;const map={over:'tOver',cal:'tCal',plan:'tPlan',org:'tOrg',meta:'tMeta',g:'tG'};
+  ['over','cal','plan','org','meta','g'].forEach(x=>{document.getElementById(x).classList.toggle('hide',x!==t);document.getElementById(map[x]).classList.toggle('on',x===t);});
+  window.scrollTo(0,0);}
+function findP(id){return POSTS.find(p=>p.id===id);}
+function approve(id){const p=findP(id);if(p){p.fb='approved';renderAll();tab('plan');}}
+function changes(id){const p=findP(id);if(p){p.fb='changes';renderAll();tab('plan');}}
+renderAll();tab('over');
+</script>
+</body>
+</html>

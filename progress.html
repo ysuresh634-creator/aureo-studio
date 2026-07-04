@@ -13,7 +13,7 @@
   .wrap{max-width:640px;margin:0 auto;padding:26px 18px 60px}
   .brand{font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
   .brand .dot{width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:inline-block}
-  .card{background:var(--win);border:2px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:22px;margin-top:20px}
+  .card{background:var(--win);border:2px solid var(--ink);border-radius:16px;box-shadow:3px 3px 0 var(--ink);padding:22px;margin-top:20px}
   .ttl{font-size:24px;font-weight:800;line-height:1.15}
   .sub{font-size:13px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
   .steps{display:flex;flex-direction:column;gap:0;margin-top:24px}
@@ -41,6 +41,7 @@
   .st{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
   .st-approved{background:#e2f6e8;color:var(--ok)} .st-review{background:#fff3d4;color:#8a6300}
   .st-draft,.st-gate{background:#eef1f6;color:#55607a} .st-changes{background:#f4e9e9;color:#a15656}
+  .st-scheduled{background:#efe9fb;color:#5b3fb0}
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
   .btn{border:2px solid var(--ink);border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
   .btn.ghost{background:var(--win)}
@@ -48,6 +49,17 @@
   .note{font-size:13px;color:var(--muted);margin-top:22px;line-height:1.6;text-align:center}
   .msg{text-align:center;padding:60px 20px;color:var(--muted)}
   .banner{background:var(--gold);border:2px solid var(--ink);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px;margin-top:16px}
+  /* content calendar + live insights */
+  .live{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--ok);text-transform:uppercase;letter-spacing:.05em}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(28,122,61,.5);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(28,122,61,.45)}70%{box-shadow:0 0 0 7px rgba(28,122,61,0)}100%{box-shadow:0 0 0 0 rgba(28,122,61,0)}}
+  .insrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 4px}
+  .ins{background:var(--cream);border:1.5px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}
+  .ins b{display:block;font-size:20px;font-weight:800;line-height:1}
+  .ins span{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:800;margin-top:4px;display:block}
+  .platrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+  .platchip{font-size:11px;font-weight:700;background:var(--cream);border:1.5px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+  .cwhen{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
 </style>
 </head>
 <body>
@@ -73,6 +85,37 @@ async function load(){
   }catch(e){ msg('Could not load — check your connection and refresh.'); }
 }
 const SLBL={draft:'in progress',gate:'in progress',review:'ready for you',approved:'approved',changes:'revising'};
+/* ---- content calendar helpers ---- */
+function platEmoji(p){ p=(p||'').toLowerCase(); if(p.indexOf('reel')>-1)return '🎬'; if(p.indexOf('story')>-1)return '⚡'; if(p.indexOf('carousel')>-1)return '🖼️'; if(p.indexOf('youtube')>-1)return '▶️'; if(p.indexOf('linkedin')>-1)return '💼'; if(p.indexOf('tiktok')>-1)return '🎵'; if(p.indexOf('facebook')>-1)return '👍'; return '📸'; }
+function statClass(s){ s=(s||'').toLowerCase(); if(s==='posted')return 'approved'; if(s==='review')return 'review'; if(s==='scheduled')return 'scheduled'; return 'draft'; }
+function prettyD(d){ if(!d)return ''; const x=new Date(d+'T00:00:00'); if(isNaN(x))return d; return x.toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short'}); }
+function contentSection(s){
+  const content=(s.content||[]).filter(c=>c&&c.id);
+  if(!content.length) return '';
+  const fbmap=s.client_action||{};
+  const posted=content.filter(c=>c.status==='Posted').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const upcoming=content.filter(c=>c.status!=='Posted').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const reviewed=content.filter(c=>fbmap['content_'+c.id]);
+  const approved=reviewed.filter(c=>fbmap['content_'+c.id].action==='approved');
+  const rate=reviewed.length?Math.round(approved.length/reviewed.length*100):null;
+  const byPlat={}; content.forEach(c=>{ const p=(c.platform||'Other').split(' ')[0]; byPlat[p]=(byPlat[p]||0)+1; });
+  const ins=(n,l)=>`<div class="ins"><b>${n}</b><span>${l}</span></div>`;
+  const insights=`<div class="insrow">${ins(content.length,'Planned')}${ins(posted.length,'Posted')}${ins(upcoming.length,'Upcoming')}${ins(rate==null?'—':rate+'%','Approved')}</div>`;
+  const platBar=Object.keys(byPlat).length?`<div class="platrow">${Object.keys(byPlat).map(p=>`<span class="platchip">${esc(p)} · ${byPlat[p]}</span>`).join('')}</div>`:'';
+  const card=(c,allowFb)=>{
+    const fb=fbmap['content_'+c.id];
+    const link=c.url?`<a class="watch" href="${esc(c.url)}" target="_blank" rel="noopener">▶ View the post</a>`:'';
+    let panel='';
+    if(fb){ panel=`<div class="fbdone ${fb.action==='approved'?'approved':'changes'}">${fb.action==='approved'?'✓ You approved this':'↺ You asked for changes'}${fb.note?' — “'+esc(fb.note)+'”':''}</div>`; }
+    else if(allowFb){ panel=`<div class="fbbox"><textarea id="cf_${esc(c.id)}" placeholder="Love it, or want a tweak? (leave blank to just approve)"></textarea><div class="actions"><button class="btn" onclick="actPost('${esc(c.id)}','approved')">✓ Approve</button><button class="btn ghost" onclick="actPost('${esc(c.id)}','changes')">✏️ Request a change</button></div></div>`; }
+    return `<div class="del"><div class="delhead"><span>${esc(platEmoji(c.platform))}</span><b>${esc(c.title||'Post')}</b><span class="st st-${statClass(c.status)}">${esc(c.status||'')}</span></div><div class="cwhen">${esc([c.platform, prettyD(c.date)].filter(Boolean).join(' · '))}</div>${link}${panel}</div>`;
+  };
+  let out=`<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div class="ttl" style="font-size:19px">Your content calendar</div><span class="live"><span class="pulse"></span>Live</span></div><div class="sub">Every post we plan &amp; publish — full transparency</div>${insights}${platBar}`;
+  if(upcoming.length){ out+=`<h3>Coming up — review &amp; approve</h3>`+upcoming.map(c=>card(c, c.status==='Review'||c.status==='Scheduled')).join(''); }
+  if(posted.length){ out+=`<h3>Already posted</h3>`+posted.map(c=>card(c,false)).join(''); }
+  out+=`</div>`;
+  return out;
+}
 function render(s){
   window.__s=s;
   const stage=s.stage||0;
@@ -94,6 +137,7 @@ function render(s){
       <div class="steps">${steps}</div>
       <h3>Your work — watch &amp; approve each piece</h3>${dels}
     </div>
+    ${contentSection(s)}
     <div class="note">Live progress, no login. Watch each edit, leave feedback, approve when you’re happy. Anything else — just reply on WhatsApp. 🟡</div>
   </div>`;
 }
@@ -106,7 +150,18 @@ window.act=async function(itemId,action){
   const url=BASE+'/shares/'+encodeURIComponent(TOK)+'?updateMask.fieldPaths=client_action&updateMask.fieldPaths=updated_at';
   for(let a=0;a<3;a++){ try{ const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(r.ok) break; }catch(e){} await new Promise(res=>setTimeout(res,600*(a+1))); }
 };
+window.actPost=async function(id,action){
+  const ta=document.getElementById('cf_'+id); const note=ta?ta.value.trim():'';
+  const cur=(window.__s&&window.__s.client_action)?Object.assign({},window.__s.client_action):{};
+  cur['content_'+id]={action:action,note:note,at:new Date().toISOString()};
+  if(window.__s){ window.__s.client_action=cur; render(window.__s); }
+  const body={fields:{client_action:wr(cur),updated_at:wr(new Date().toISOString())}};
+  const url=BASE+'/shares/'+encodeURIComponent(TOK)+'?updateMask.fieldPaths=client_action&updateMask.fieldPaths=updated_at';
+  for(let a=0;a<3;a++){ try{ const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(r.ok) break; }catch(e){} await new Promise(res=>setTimeout(res,600*(a+1))); }
+};
 load();
+/* live: refresh in the background so the dashboard stays current, without disturbing typing */
+setInterval(function(){ if(document.hidden) return; const f=document.activeElement; if(f&&f.tagName==='TEXTAREA') return; load(); }, 60000);
 </script>
 </body>
 </html>

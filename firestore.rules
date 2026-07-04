@@ -85,6 +85,8 @@ service cloud.firestore {
     match /accounts/{id}     { allow read, write: if isTeam(); }
     match /jobs/{id}         { allow read, write: if isTeam(); }
     match /followups/{id}    { allow read, write: if isTeam(); }
+    match /leads/{id}        { allow read, write: if isTeam(); }
+    match /content/{id}      { allow read, write: if isTeam(); }
 
     // Client share links: anyone with the exact link (doc id = unguessable token)
     // can VIEW; nobody can enumerate; only team creates/updates the snapshot;

@@ -499,6 +499,8 @@ const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"
 const fmt=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'numeric',month:'short'})};
 const prog=p=>p.stage>=4?100:Math.round((p.stage+(p.stage===3?.5:.3))/5*100);
 const ICON={
+  cal:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4.5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="2.2"/><path d="M3 9h18M8 3v3M16 3v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  leads:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 5h18l-7 8v6l-4 2v-8z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   home:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11 12 4l8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
   clients:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S13.9 16 14.5 19M16 6.2A3 3 0 0 1 16 12M18 19c-.3-1.9-1-3.2-2-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   pipeline:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="5" height="16" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="4" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="17" y="4" width="4" height="7" rx="1.5" stroke="currentColor" stroke-width="2.2"/></svg>',
@@ -579,7 +581,7 @@ async function enter(preUser){
 }
 function buildNav(){
   // Team-only app — non-team users are bounced before this ever runs.
-  const items = [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['monitor','Monitor',ICON.clients],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]];
+  const items = [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['leads','Leads',ICON.leads],['calendar','Calendar',ICON.cal],['monitor','Monitor',ICON.clients],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
     + `<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`;
   $('#mobNav').innerHTML=items.map(([v,l,ic])=>`<button data-v="${v}" onclick="nav('${v}')">${ic}<span>${l}</span></button>`).join('');
@@ -596,14 +598,16 @@ async function render(){
     if(ME.role==='freelancer'){ if(view.v==='project') await vFreelancerProject(view.arg); else await vFreelancerHome(); }
     else if(view.v==='project') await vProject(view.arg);
     else if(view.v==='client'&&ME.role==='team') await vClientDetail(view.arg);
-    else if(view.v==='clients'&&ME.role==='team') await vClients();
+    else if(view.v==='clients'&&ME.role==='team') await vClients2();
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
+    else if(view.v==='leads'&&ME.role==='team') await vLeads();
+    else if(view.v==='calendar'&&ME.role==='team') await vCalendar();
     else if(view.v==='monitor'&&ME.role==='team') await vMonitor();
     else if(view.v==='inbox'&&ME.role==='team') await vInbox();
     else if(view.v==='jobs'&&ME.role==='team') await vJobs();
     else if(view.v==='money'&&ME.role==='team') await vMoney();
     else if(view.v==='msgs') await vMessages();
-    else if(ME.role==='team') await vTeamHome();
+    else if(ME.role==='team') await vDash();
     else await vClientHome();
   }catch(e){ el.innerHTML=`<div class="empty"><b>Something went wrong</b><span>${esc(e.message||'')}</span></div>`; }
   finally{ clearTimeout(skelT); }
@@ -1199,7 +1203,8 @@ async function syncShare(pid){
   const p=(PROJECTS||[]).find(x=>x.id===pid); if(!p||!p.share_token) return;
   let items=[]; try{ const r=await sb.from('deliverables').select('*').eq('project_id',pid).order('created_at'); items=r.data||[]; }catch(e){}
   const c=CLIENTS[p.client_id]||{};
-  const snap={ project_id:pid, title:p.title||'', client:c.name||'', type:p.type||'', stage:p.stage||0, updated_at:nowISO(), deliverables:items.map(it=>({id:it.id,title:it.title||'',emoji:it.emoji||'📄',status:it.status||'draft',url:it.url||null})) };
+  let _content=[]; try{ if(p.client_id){ const _cr=await sb.from('content').select('*').eq('client_id',p.client_id); _content=(_cr.data||[]); } }catch(e){}
+  const snap={ project_id:pid, title:p.title||'', client:c.name||'', type:p.type||'', stage:p.stage||0, updated_at:nowISO(), content:_content.map(x=>({id:x.id,title:(x.caption||x.title||''),date:(x.date||''),platform:(x.platform||''),status:(x.status||''),url:(x.asset_url||'')})), deliverables:items.map(it=>({id:it.id,title:it.title||'',emoji:it.emoji||'📄',status:it.status||'draft',url:it.url||null})) };
   try{ await fdb.collection('shares').doc(p.share_token).set(snap,{merge:true}); }catch(e){}
 }
 async function shareProject(pid){
@@ -1327,5 +1332,726 @@ $('#logoutBtn2').addEventListener('click',logout);
 async function logout(){ if(ch){try{ch();}catch(e){}ch=null;} await sb.auth.signOut(); showLogin(); }
 boot();
 </script>
+
+<!-- AUREO_LEADS_SECTION : Firestore-backed leads pipeline (migrated from Notion) -->
+<style>
+.lkpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:14px 0 4px}
+.lkpi{background:var(--win);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px}
+.lkpi b{font:800 26px var(--disp);line-height:1;display:block}
+.lkpi span{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.lctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 16px}
+.ltoggle{display:flex;border:1.5px solid var(--ink);border-radius:9px;overflow:hidden}
+.ltoggle button{font:700 11px var(--mono);padding:6px 12px;background:var(--win);border:none;cursor:pointer;color:var(--ink)}
+.ltoggle button.on{background:var(--ink);color:var(--cream)}
+.lseg{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:220px}
+.lchip{font:600 11px var(--mono);border:1.5px solid var(--line);background:var(--win);border-radius:999px;padding:4px 11px;cursor:pointer;color:var(--sec)}
+.lchip:hover{border-color:var(--ink)}
+.lchip.on{background:var(--gold);border-color:var(--ink);color:var(--ink)}
+.lchip .n{opacity:.5;margin-left:5px}
+.lsel{font:600 12px var(--sans);border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--win);color:var(--ink)}
+/* board */
+.lboard{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(262px,1fr);gap:14px;overflow-x:auto;padding-bottom:12px}
+.lcol{background:rgba(22,24,29,.035);border:1px solid var(--line);border-radius:14px;padding:10px 10px 12px;display:flex;flex-direction:column;min-height:120px}
+.lcol.over{background:rgba(255,204,0,.14);border-color:var(--ink)}
+.lcol-h{display:flex;align-items:center;justify-content:space-between;font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--sec);padding:2px 4px 10px}
+.lcol-h .n{background:var(--ink);color:var(--cream);border-radius:999px;padding:1px 8px;font-size:10px}
+.lcol-body{display:flex;flex-direction:column;gap:9px;max-height:62vh;overflow-y:auto;padding:1px}
+.lcard{background:var(--win);border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;cursor:grab}
+.lcard:hover{border-color:var(--ink);box-shadow:2px 2px 0 var(--ink);transform:translate(-1px,-1px)}
+.lcard:active{cursor:grabbing}
+.lcard-t{font:600 13.5px var(--sans);color:var(--ink);display:flex;align-items:center;gap:8px;line-height:1.3}
+.lcard-t b{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px rgba(0,0,0,.12)}
+.lcard-s{font:11px var(--mono);color:var(--muted);margin-top:5px;padding-left:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lcard-act{display:flex;gap:6px;margin-top:9px;padding-left:16px;opacity:0;transition:opacity .12s}
+.lcard:hover .lcard-act,.lrow:hover .lcard-act{opacity:1}
+.lcact{font:700 10.5px var(--mono);border:1.5px solid var(--ink);border-radius:6px;padding:2px 7px;background:var(--cream);text-decoration:none;color:var(--ink);cursor:pointer;display:inline-block}
+.lcact:hover{background:var(--gold)}
+/* list */
+.lrow{display:flex;align-items:center;gap:12px;background:var(--win);border:1.5px solid var(--line);border-radius:11px;padding:9px 13px;margin-bottom:7px}
+.lrow:hover{border-color:var(--ink)}
+.lrow-main{flex:1;min-width:0}
+.lrow .lcard-s{padding-left:0;margin-top:3px}
+.lstat{font:600 11px var(--mono);color:var(--muted)}
+.lnote{font:12px/1.6 var(--sans);color:var(--muted);margin:16px 2px 0;max-width:660px}
+</style>
+<script>
+/* ===== AUREO_LEADS_SECTION — Firestore-backed leads pipeline ===== */
+const LEADS_SEED = [{"Business": "Emerge Premium Fitness Studio", "Industry": "Boutique fitness — Aerial/HIIT", "City": "Bangalore (Jayanagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610814b94c9c6c1603f2b58", "Notion_ID": "389994b70610814b94c9c6c1603f2b58"}, {"Business": "Fitness Fusion – The Pilates Studio", "Industry": "Reformer/Aerial/Mat Pilates", "City": "Delhi (Vasant Kunj)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081bd8f30d12176adcc03", "Notion_ID": "391994b7061081bd8f30d12176adcc03"}, {"Business": "Crafted Pilates", "Industry": "Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081dd8bb8e6199d441c34", "Notion_ID": "388994b7061081dd8bb8e6199d441c34"}, {"Business": "Pancha Kosha Yoga", "Industry": "Yoga therapy", "City": "Bangalore (Koramangala)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610817999d77ea16eb7a9aa9", "Notion_ID": "388994b70610817999d77ea16eb7a9aa9"}, {"Business": "SLAM Lifestyle & Fitness Studio", "Industry": "Strength & HIIT", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081fd890cf22faae45910", "Notion_ID": "389994b7061081fd890cf22faae45910"}, {"Business": "Athayog Living", "Industry": "Yoga academy", "City": "Bangalore (Indiranagar/Jayanagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610817099917dac390d71f3d", "Notion_ID": "388994b70610817099917dac390d71f3d"}, {"Business": "MAS Pilates & Fitness", "Industry": "Classical Pilates", "City": "Mumbai (Khar West)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081edb343d8c0ce1d3783", "Notion_ID": "38e994b7061081edb343d8c0ce1d3783"}, {"Business": "The Yoga House", "Industry": "Yoga + wellness café", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081c2b470c0dad9c0a75d", "Notion_ID": "388994b7061081c2b470c0dad9c0a75d"}, {"Business": "A1000 Yoga", "Industry": "Yoga + teacher training", "City": "Bangalore (Koramangala)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610812b83ecf7b1de2ba727", "Notion_ID": "388994b70610812b83ecf7b1de2ba727"}, {"Business": "Posh Fitness", "Industry": "CrossFit + functional", "City": "Bangalore (Koramangala)", "Contact_Email": "", "Email_Status": "CAUTION: different studio 'Posh Lifestyle Fitness' poshfitness.in — do not use until confirmed", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081e59eeef39c5cd49b79", "Notion_ID": "388994b7061081e59eeef39c5cd49b79"}, {"Business": "Align – The Pilates Studio", "Industry": "Reformer/Barre/TRX Pilates + clinical gym", "City": "Hyderabad (Banjara Hills)", "Contact_Email": "", "Email_Status": "EMAIL UNVERIFIED — do not draft (alignpilates.in: phone/enquiry only)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081178d54d5bbeb6f34e8", "Notion_ID": "391994b7061081178d54d5bbeb6f34e8"}, {"Business": "Proyog", "Industry": "Yoga apparel / studio", "City": "Bengaluru", "Contact_Email": "hello@proyog.com", "Email_Status": "Verified (proyog.com/pages/contact-us)", "Instagram": "@proyog", "Stage_(best-effort)": "Contacted (draft 25 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081b6a9bbfeef8b37fc29", "Notion_ID": "389994b7061081b6a9bbfeef8b37fc29"}, {"Business": "Menkaa's Pilates & Reformer Studio", "Industry": "Reformer Pilates + mind coaching", "City": "Mumbai (Andheri West)", "Contact_Email": "", "Email_Status": "EMAIL UNVERIFIED — do not draft (menkaaspilates.in hides email)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b70610815489afc2195c50034f", "Notion_ID": "391994b70610815489afc2195c50034f"}, {"Business": "The Pilates Studio – Bangalore (by Namrata Purohit)", "Industry": "Reformer Pilates", "City": "Bangalore (Indiranagar + Cunningham Rd)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081bfb50ee27e43ccbb39", "Notion_ID": "385994b7061081bfb50ee27e43ccbb39"}, {"Business": "Studio Oura – Pilates & Yoga", "Industry": "Pilates + Yoga", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b70610818c8225cb5e3e57a8b7", "Notion_ID": "385994b70610818c8225cb5e3e57a8b7"}, {"Business": "YogAngle Studio", "Industry": "Yoga (25+ forms)", "City": "Mumbai (Vile Parle East)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081c2a237f902a04e74bc", "Notion_ID": "391994b7061081c2a237f902a04e74bc"}, {"Business": "Saathi", "Industry": "Sustainable pads (D2C)", "City": "Ahmedabad", "Contact_Email": "sales@saathipads.com", "Email_Status": "Verified (saathipads.com/pages/contact-us)", "Instagram": "@saathipads", "Stage_(best-effort)": "Contacted (draft 25 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081458431f24e05e309a8", "Notion_ID": "389994b7061081458431f24e05e309a8"}, {"Business": "Figurine Fitness", "Industry": "Dance aerobics / boutique fitness & gym", "City": "Bangalore (Indiranagar)", "Contact_Email": "santosh@figurinefitness.in", "Email_Status": "Verified — QUALIFIED Day 8", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b706108129bde8f18f87bb8939", "Notion_ID": "392994b706108129bde8f18f87bb8939"}, {"Business": "Goa Pilates Studio", "Industry": "Reformer Pilates", "City": "Bengaluru", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081fd8992d297a348e635", "Notion_ID": "38e994b7061081fd8992d297a348e635"}, {"Business": "Whitefield Total Fitness", "Industry": "CrossFit/Functional", "City": "Bangalore (Whitefield)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081e1a4c6c860305528f5", "Notion_ID": "388994b7061081e1a4c6c860305528f5"}, {"Business": "Reform Pilates Studio", "Industry": "Reformer Pilates", "City": "Bangalore (Koramangala 4th Block)", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND — verify (no official website)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081fe9366cf42a7bc9ab5", "Notion_ID": "388994b7061081fe9366cf42a7bc9ab5"}, {"Business": "Gravity Holistic Fitness", "Industry": "Holistic strength & conditioning + physio", "City": "Chennai (Alwarpet)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081d79ecef580ddbeaf7a", "Notion_ID": "391994b7061081d79ecef580ddbeaf7a"}, {"Business": "Vigoure MMA & Fitness", "Industry": "MMA/boxing/kickboxing", "City": "Bangalore (Koramangala +3)", "Contact_Email": "", "Email_Status": "email needs one more corroborating source", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081f3b0b0c99a0c016bdc", "Notion_ID": "392994b7061081f3b0b0c99a0c016bdc"}, {"Business": "Mhyth", "Industry": "Activewear (D2C)", "City": "Bengaluru / New Delhi", "Contact_Email": "info@mhyth.com", "Email_Status": "Verified (mhyth.com/pages/contact)", "Instagram": "@mhyth.official", "Stage_(best-effort)": "Contacted (draft 25 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108100a56efde84f8a4fac", "Notion_ID": "389994b706108100a56efde84f8a4fac"}, {"Business": "Purple Pilates", "Industry": "Pilates", "City": "Bangalore (HSR Layout)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610816ab29ddc20a2f5996a", "Notion_ID": "388994b70610816ab29ddc20a2f5996a"}, {"Business": "Core Pilates", "Industry": "Reformer Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081d6a89ed2fcc886eca5", "Notion_ID": "389994b7061081d6a89ed2fcc886eca5"}, {"Business": "House of Pilates", "Industry": "Reformer Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081fb85d9cdf18a482ffa", "Notion_ID": "388994b7061081fb85d9cdf18a482ffa"}, {"Business": "Pilates For Wellbeing", "Industry": "Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081cd8e9de4a99c5d0db8", "Notion_ID": "388994b7061081cd8e9de4a99c5d0db8"}, {"Business": "Aero Core Pilates", "Industry": "Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108158ade0e40a1dea1d35", "Notion_ID": "389994b706108158ade0e40a1dea1d35"}, {"Business": "Whitefield Reformer Pilates", "Industry": "Reformer Pilates", "City": "Bangalore (Whitefield)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081f79fe6d66a6cf57b4c", "Notion_ID": "389994b7061081f79fe6d66a6cf57b4c"}, {"Business": "Ruchi Pilates Studio", "Industry": "Reformer & Mat Pilates + rehab", "City": "Mumbai (Powai)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38f994b70610816c9dc7f4777151257e", "Notion_ID": "38f994b70610816c9dc7f4777151257e"}, {"Business": "Pure Pilates", "Industry": "Reformer Pilates (small-group)", "City": "Chennai (ECR/Injambakkam)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081a898d6d4ce0c195f7b", "Notion_ID": "391994b7061081a898d6d4ce0c195f7b"}, {"Business": "AATMA Pilates Studio", "Industry": "Luxury Pilates", "City": "Bengaluru (JW Marriott)", "Contact_Email": "", "Email_Status": "single source only; official site shows phone/IG only", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b706108140a928e0b965abcbf0", "Notion_ID": "388994b706108140a928e0b965abcbf0"}, {"Business": "Excel Pilates", "Industry": "Reformer Pilates", "City": "Delhi (Vasant Kunj)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081c39e45eb3239225b80", "Notion_ID": "38e994b7061081c39e45eb3239225b80"}, {"Business": "Activ8 Pilates & Rehab Studio", "Industry": "Reformer + physio-rehab", "City": "Mumbai (Juhu)", "Contact_Email": "(see activ8studio.in)", "Email_Status": "TRIPLE-QC VERIFIED (official site activ8studio.in)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b7061081059109cad5ce3ab447", "Notion_ID": "38a994b7061081059109cad5ce3ab447"}, {"Business": "Pilates For You", "Industry": "Reformer & Mat Pilates", "City": "Gurugram (DLF Phase 4)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38f994b70610818ba8f2c3775f2b8019", "Notion_ID": "38f994b70610818ba8f2c3775f2b8019"}, {"Business": "Flex Pilates", "Industry": "Reformer Pilates + Physio", "City": "Hyderabad (Secunderabad)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b7061081ac8c94dc694451f6ce", "Notion_ID": "38a994b7061081ac8c94dc694451f6ce"}, {"Business": "Dr. Pilates", "Industry": "Physio-led Pilates / rehab", "City": "Bengaluru (Kalyan Nagar & Hennur)", "Contact_Email": "", "Email_Status": "markets mainly via WhatsApp", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38f994b7061081a39527f66545a871d9", "Notion_ID": "38f994b7061081a39527f66545a871d9"}, {"Business": "YKBI Pilates – Yasmin Karachiwala Body Image", "Industry": "Reformer Pilates", "City": "Mumbai (Bandra)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b7061081d4b6c5fdd6c7e11178", "Notion_ID": "38a994b7061081d4b6c5fdd6c7e11178"}, {"Business": "iKore Pilates", "Industry": "Reformer Pilates + teacher training", "City": "Pune (Aundh/Kalyani Nagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081b0b9c8f3fe00f08385", "Notion_ID": "391994b7061081b0b9c8f3fe00f08385"}, {"Business": "Pilates Academy", "Industry": "Reformer Pilates", "City": "Mumbai (Juhu)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081a7856ddc08980471b1", "Notion_ID": "38e994b7061081a7856ddc08980471b1"}, {"Business": "Transform Pilates", "Industry": "Pilates, Barre, Yoga", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610814080f4fc9d97fc78fb", "Notion_ID": "388994b70610814080f4fc9d97fc78fb"}, {"Business": "Chaitanya Wellness Yoga Academy", "Industry": "Yoga + aerial + TTC", "City": "Bangalore (Kaggadaspura & Kasavanahalli)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081ad9694d9cd5627a079", "Notion_ID": "392994b7061081ad9694d9cd5627a079"}, {"Business": "Bodhsara Wellness & Salt Studio", "Industry": "Salt therapy / infrared sauna / oxygen", "City": "Bangalore (Koramangala)", "Contact_Email": "info@bodhsara.com", "Email_Status": "Verified — QUALIFIED Day 8 (site footer)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081a7aab1df279131276f", "Notion_ID": "392994b7061081a7aab1df279131276f"}, {"Business": "Krishna Wellness Yoga & Cultural Centre", "Industry": "Yoga & Therapy", "City": "Bangalore (Malleshwaram)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b706108128adefc3e3e9f1f5e2", "Notion_ID": "38a994b706108128adefc3e3e9f1f5e2"}, {"Business": "Leap Wellness Studio", "Industry": "Pilates + Yoga + Functional", "City": "Chennai (R.A. Puram)", "Contact_Email": "(see leapwellness.com)", "Email_Status": "TRIPLE-QC VERIFIED (leapwellness.com)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b7061081228df5d82f554112c3", "Notion_ID": "38a994b7061081228df5d82f554112c3"}, {"Business": "Studio Ananta", "Industry": "Reformer/Barre/Aerial + Recovery", "City": "Hyderabad (Khajaguda)", "Contact_Email": "hi@studioananta.in", "Email_Status": "Verified (studioananta.in)", "Instagram": "@ananta.hyd", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108157899cf6285f821b94", "Notion_ID": "389994b706108157899cf6285f821b94"}, {"Business": "Fit Life Yoga", "Industry": "Yoga (Hatha/Vinyasa)", "City": "Bangalore (Indiranagar)", "Contact_Email": "info@fitlifeyoga.com", "Email_Status": "Verified (fitlifeyoga.com)", "Instagram": "@fitlifeyoga", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610812fba79e2813910ef92", "Notion_ID": "389994b70610812fba79e2813910ef92"}, {"Business": "Vogue The Yoga Studio", "Industry": "Women-only yoga / aerial / bungee", "City": "Mumbai (Mumbai Central)", "Contact_Email": "gulnar@voguetheyogastudio.com", "Email_Status": "EMAIL UNVERIFIED — do not draft (single source)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081a193f8d4ed3abc4136", "Notion_ID": "391994b7061081a193f8d4ed3abc4136"}, {"Business": "Adyar Yoga Studio", "Industry": "Yoga + reformer", "City": "Chennai (Besant Nagar)", "Contact_Email": "", "Email_Status": "thin social output", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b70610819c9096eca3a7dec922", "Notion_ID": "38a994b70610819c9096eca3a7dec922"}, {"Business": "Namma CrossFit", "Industry": "CrossFit / S&C", "City": "Bangalore (Vasanth Nagar + Koramangala)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b70610819ca41ed19664cc7bb0", "Notion_ID": "391994b70610819ca41ed19664cc7bb0"}, {"Business": "Yoga365", "Industry": "Yoga + corporate yoga + TTC", "City": "Mumbai (Borivali West)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b7061081c8a03ef9b07df07997", "Notion_ID": "391994b7061081c8a03ef9b07df07997"}, {"Business": "CrossFit ZOH", "Industry": "CrossFit", "City": "Bangalore (Bellandur)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108190abacea51d7f83c79", "Notion_ID": "389994b706108190abacea51d7f83c79"}, {"Business": "YogLove Studio", "Industry": "Beach-side yoga + retreats", "City": "Mumbai (Versova)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b70610811b8dd8d5ec4c8dec6b", "Notion_ID": "391994b70610811b8dd8d5ec4c8dec6b"}, {"Business": "Andiappan Yoga", "Industry": "Yoga studio, therapy & classes", "City": "Chennai (Anna Nagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38f994b706108111a19fc93f2a723af5", "Notion_ID": "38f994b706108111a19fc93f2a723af5"}, {"Business": "Once More CrossFit", "Industry": "CrossFit box", "City": "Bangalore (Kothanur)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081a1b4f4c62f85e81586", "Notion_ID": "388994b7061081a1b4f4c62f85e81586"}, {"Business": "KRS Yoga Academy", "Industry": "Yoga studio", "City": "Bangalore (Whitefield)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081c6a79bc5ab894732a7", "Notion_ID": "38e994b7061081c6a79bc5ab894732a7"}, {"Business": "Absolute Yoga", "Industry": "Yoga — aerial, hatha, meditation", "City": "Bangalore (HRBR / Kalyan Nagar)", "Contact_Email": "", "Email_Status": "EMAIL UNVERIFIED — do not draft (phone/WhatsApp only)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081229706e17e7f0ed6e1", "Notion_ID": "392994b7061081229706e17e7f0ed6e1"}, {"Business": "The YogArt Studio", "Industry": "Yoga + YTTC", "City": "Mumbai (Vile Parle West)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/391994b706108109bb0cc6b9619adbd9", "Notion_ID": "391994b706108109bb0cc6b9619adbd9"}, {"Business": "Barre FIT — The Lewis Foundation of Classical Ballet", "Industry": "Barre / ballet fitness", "City": "Bangalore (Ulsoor)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081e6b3bdc05486fa6be2", "Notion_ID": "392994b7061081e6b3bdc05486fa6be2"}, {"Business": "Yoga Sangha", "Industry": "Hatha Yoga", "City": "Bangalore (HSR Layout)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b70610813ea6fcebfe7d2d52fe", "Notion_ID": "38e994b70610813ea6fcebfe7d2d52fe"}, {"Business": "Tangerine Arts Studio", "Industry": "Yoga, dance & wellness", "City": "Mumbai (Bandra)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38e994b7061081cab72ddaa5bba645a7", "Notion_ID": "38e994b7061081cab72ddaa5bba645a7"}, {"Business": "Srimoyi Yoga", "Industry": "Prenatal & Therapeutic Yoga", "City": "Bangalore (Bellandur)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b7061081ee8f5fe90b5efb4de5", "Notion_ID": "38a994b7061081ee8f5fe90b5efb4de5"}, {"Business": "Hith Yoga", "Industry": "Yoga studio", "City": "Delhi / Gurgaon (Defence Colony)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38f994b706108126bea1c894d4e59e7b", "Notion_ID": "38f994b706108126bea1c894d4e59e7b"}, {"Business": "The Swingers Dance Studio", "Industry": "Dance & dance-fitness (Zumba, salsa, hip hop)", "City": "Bangalore (Indiranagar & Koramangala)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/392994b7061081c18167e45149cc14c4", "Notion_ID": "392994b7061081c18167e45149cc14c4"}, {"Business": "Studio Venus", "Industry": "Multi-format yoga/dance/fitness", "City": "Bangalore (Jayanagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b70610810593c0c207a8a31d94", "Notion_ID": "388994b70610810593c0c207a8a31d94"}, {"Business": "The Zone Mind & Body Studio", "Industry": "Boutique personal-training studio", "City": "Bangalore (Koramangala)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081cea6c7d6943b032c9b", "Notion_ID": "388994b7061081cea6c7d6943b032c9b"}, {"Business": "the STUDIO by Copper + Cloves", "Industry": "Pilates / yoga / breathwork + cafe", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/388994b7061081f7ace9c485cd352b6c", "Notion_ID": "388994b7061081f7ace9c485cd352b6c"}, {"Business": "Silvertraq", "Industry": "Women's activewear (D2C)", "City": "Mumbai", "Contact_Email": "info@silvertraq.com", "Email_Status": "Verified (silvertraq.com/pages/contact-us)", "Instagram": "@silvertraq", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610817d89a7fa35f0525811", "Notion_ID": "389994b70610817d89a7fa35f0525811"}, {"Business": "RedMat Pilates", "Industry": "Reformer Pilates", "City": "Delhi (Vasant Vihar) + Gurugram", "Contact_Email": "(redmatpilates.com/call-me-back)", "Email_Status": "Verified", "Instagram": "@redmatpilates", "Stage_(best-effort)": "Contacted (draft 24 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108155b0b0e11db21a7a3d", "Notion_ID": "389994b706108155b0b0e11db21a7a3d"}, {"Business": "Astitva", "Industry": "Yoga", "City": "Bangalore (Indiranagar)", "Contact_Email": "yogaastitva@gmail.com", "Email_Status": "Verified (astitva-yoga.com)", "Instagram": "", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610812e8b30f466526a1baf", "Notion_ID": "389994b70610812e8b30f466526a1baf"}, {"Business": "Tone30 Pilates", "Industry": "Pilates", "City": "Bangalore", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND (site email masked) — verify; contact form/DM", "Instagram": "@tone30pilatesofficial", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610810cbae3c911f204849b", "Notion_ID": "389994b70610810cbae3c911f204849b"}, {"Business": "Sirona", "Industry": "Feminine hygiene (D2C)", "City": "Gurugram", "Contact_Email": "info@thesirona.com", "Email_Status": "Verified (thesirona.com/pages/contactus)", "Instagram": "@sironahygiene", "Stage_(best-effort)": "Contacted (draft 25 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108190adbbef41aaa93972", "Notion_ID": "389994b706108190adbbef41aaa93972"}, {"Business": "Carmesi", "Industry": "Feminine care (D2C)", "City": "Mumbai", "Contact_Email": "care@mycarmesi.com", "Email_Status": "Verified (mycarmesi.com/pages/contact-us)", "Instagram": "@mycarmesi", "Stage_(best-effort)": "Contacted (draft 24 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108103b3fec7af44099532", "Notion_ID": "389994b706108103b3fec7af44099532"}, {"Business": "Chakra Athletica", "Industry": "Indoor cycling / barre / bootcamp", "City": "Bangalore (multi-location)", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND (phone/WhatsApp only) — verify", "Instagram": "@chakraathletica", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108168afebdf9349be5600", "Notion_ID": "389994b706108168afebdf9349be5600"}, {"Business": "MultiFit", "Industry": "Multi-format fitness chain", "City": "Bangalore (Indiranagar) / Pune HQ", "Contact_Email": "", "Email_Status": "EMAIL UNVERIFIED — do not draft (likely out of niche)", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610813abbbafc9296ef547f", "Notion_ID": "389994b70610813abbbafc9296ef547f"}, {"Business": "SAMA — The Calm Mind Studio", "Industry": "Aerial yoga / calm studio", "City": "Bangalore", "Contact_Email": "namaste@samastudio.in", "Email_Status": "Verified (samastudio.in)", "Instagram": "@sama.studioindia", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108128bc99cf6515c4ebb8", "Notion_ID": "389994b706108128bc99cf6515c4ebb8"}, {"Business": "Bodhi School of Yoga", "Industry": "Yoga / therapy (multi-city)", "City": "Bangalore (Indiranagar)", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/38a994b70610819e92acf2a08609805f", "Notion_ID": "38a994b70610819e92acf2a08609805f"}, {"Business": "Life & Jam", "Industry": "Wellness / fitness", "City": "Mumbai", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND — verify; contact form / founder LinkedIn", "Instagram": "@lifeandjam", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081cf8354d0d824c38c92", "Notion_ID": "389994b7061081cf8354d0d824c38c92"}, {"Business": "Movement Pilates", "Industry": "Pilates", "City": "Gurugram (Sector 43 & 65)", "Contact_Email": "movementpilatesindia@gmail.com", "Email_Status": "Verified (movementpilates.in)", "Instagram": "", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610811db1b3d7654533a80d", "Notion_ID": "389994b70610811db1b3d7654533a80d"}, {"Business": "Krvvy", "Industry": "Athleisure / activewear (D2C)", "City": "Noida (Delhi-NCR)", "Contact_Email": "hello@krvvy.com", "Email_Status": "Verified (krvvy.com/pages/about-us)", "Instagram": "@staykrvvy", "Stage_(best-effort)": "Contacted (draft 24 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108133bdfcd2125f491745", "Notion_ID": "389994b706108133bdfcd2125f491745"}, {"Business": "Mindkore Pilates", "Industry": "Pilates", "City": "Mumbai (South Mumbai)", "Contact_Email": "meghakawale@gmail.com", "Email_Status": "Verified (meghakawale.com/mindcore-pilates)", "Instagram": "@mindkore_pilates", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108140a918f49301e6fefb", "Notion_ID": "389994b706108140a918f49301e6fefb"}, {"Business": "Air & Asanas", "Industry": "Aerial yoga (multi-location)", "City": "Mumbai", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND (phone/WhatsApp only) — verify", "Instagram": "@airandasanas", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108148a242da84a8d80fc1", "Notion_ID": "389994b706108148a242da84a8d80fc1"}, {"Business": "Eclipse Wellbeing Hub", "Industry": "Wellbeing hub", "City": "Mumbai (Santacruz W)", "Contact_Email": "support@goeclipse.co.in", "Email_Status": "Verified (goeclipse.co.in)", "Instagram": "@goeclipse_in", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610816393fddcc62b35cf0b", "Notion_ID": "389994b70610816393fddcc62b35cf0b"}, {"Business": "Sparkle", "Industry": "Feminine wellness (D2C)", "City": "Surat", "Contact_Email": "care@sparkle.life", "Email_Status": "Verified (sparkle.life)", "Instagram": "@sparkle.life.india", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108164a075c03ca6629f05", "Notion_ID": "389994b706108164a075c03ca6629f05"}, {"Business": "Mysaé", "Industry": "Lingerie / intimate (D2C)", "City": "Noida (Delhi-NCR)", "Contact_Email": "care@mysae.in", "Email_Status": "Verified (mysae.in/pages/contact)", "Instagram": "@itsmysae", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081beba79e377b3ca1e2a", "Notion_ID": "389994b7061081beba79e377b3ca1e2a"}, {"Business": "Cava Athleisure", "Industry": "Athleisure (D2C)", "City": "Bengaluru", "Contact_Email": "contact@cavaathleisure.com", "Email_Status": "Verified (cavaathleisure.com)", "Instagram": "@cava_athleisure", "Stage_(best-effort)": "Contacted (draft 24 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081fca85dc224739a59a6", "Notion_ID": "389994b7061081fca85dc224739a59a6"}, {"Business": "House of Zelena", "Industry": "Maternity / wellness (D2C)", "City": "New Delhi", "Contact_Email": "cs@houseofzelena.com", "Email_Status": "Verified (houseofzelena.com/pages/about-us)", "Instagram": "@houseofzelena", "Stage_(best-effort)": "Contacted (draft 25 Jun)", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b706108117b164eb2902c399e7", "Notion_ID": "389994b706108117b164eb2902c399e7"}, {"Business": "Tailor and Circus (&Circus)", "Industry": "Inclusive apparel / innerwear (D2C)", "City": "India", "Contact_Email": "hello@andcircus.com", "Email_Status": "Verified (andcircus.com/pages/contact-us)", "Instagram": "@_andcircus", "Stage_(best-effort)": "Contacted/Draft", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b70610816a9b27c102690eea39", "Notion_ID": "389994b70610816a9b27c102690eea39"}, {"Business": "KamukLife", "Industry": "Sexual-wellness / intimate (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b70610818ca0a5f6ba1f0176fd", "Notion_ID": "385994b70610818ca0a5f6ba1f0176fd"}, {"Business": "IMbesharam (IM Besharam)", "Industry": "Sexual-wellness / intimate (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081638674eccfc7cd905f", "Notion_ID": "385994b7061081638674eccfc7cd905f"}, {"Business": "Leezu's", "Industry": "Intimate / sexual wellness (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081fa8605ceb41e58e2f3", "Notion_ID": "385994b7061081fa8605ceb41e58e2f3"}, {"Business": "MyMuse", "Industry": "Intimate / sexual wellness (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081859439e3cb9fc17263", "Notion_ID": "385994b7061081859439e3cb9fc17263"}, {"Business": "Peppy", "Industry": "Sexual wellness (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081ae968fc87b33ca38a0", "Notion_ID": "385994b7061081ae968fc87b33ca38a0"}, {"Business": "That Sassy Thing", "Industry": "Intimate / sexual wellness (D2C)", "City": "India", "Contact_Email": "", "Email_Status": "not captured — needs page fetch", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/385994b7061081b98ab3dc2c4f67c992", "Notion_ID": "385994b7061081b98ab3dc2c4f67c992"}, {"Business": "Moushu's Pilates", "Industry": "Pilates", "City": "Mumbai", "Contact_Email": "", "Email_Status": "EMAIL NOT FOUND (site email masked) — verify; contact form", "Instagram": "", "Stage_(best-effort)": "Researching", "Owner": "Lead-Gen Specialist", "Notion_URL": "https://app.notion.com/p/389994b7061081198431e7c59e33a285", "Notion_ID": "389994b7061081198431e7c59e33a285"}];
+const LSTAGES=['Researching','Contacted','Replied','Qualified','Won','Lost'];
+let LEADS=null, LERR=null, LVIEW='board', LSEG='all', LSEARCH='', LSORT='name', LDRAG=null;
+
+function lHasEmail(l){ return !!(l && l.email && String(l.email).indexOf('@')>-1); }
+function lCleanEmail(e){ e=(e||'').trim(); return e.indexOf('@')>-1?e:''; }
+function lIg(l){ return l && l.instagram ? 'https://instagram.com/'+String(l.instagram).replace(/^@/,'').trim() : ''; }
+function lStatusClass(s){ s=(s||'').toLowerCase();
+  if(s.indexOf('triple-qc')>-1 || s.indexOf('verified')===0) return 'ok';
+  if(s.indexOf('unverified')>-1||s.indexOf('not found')>-1||s.indexOf('caution')>-1||s.indexOf('do not')>-1||s.indexOf('needs')>-1) return 'warn';
+  return 'mut'; }
+function lDotColor(c){ return c==='ok'?'var(--ok)':c==='warn'?'var(--warn)':'#c7c2b6'; }
+function lStatusWord(l){ const c=lStatusClass(l.email_status); return c==='ok'?'Verified':c==='warn'?'Unverified':(lHasEmail(l)?'Has email':'No email'); }
+function lDot(l){ const c=lStatusClass(l.email_status); return `<span class="ldot" style="background:${lDotColor(c)}" title="${esc(l.email_status||'')}"></span>`; }
+function mapStage(s){ s=(s||'').toLowerCase();
+  if(s.indexOf('qualif')>-1) return 'Qualified'; if(s.indexOf('won')>-1) return 'Won'; if(s.indexOf('lost')>-1) return 'Lost';
+  if(s.indexOf('replied')>-1) return 'Replied'; if(s.indexOf('contact')>-1||s.indexOf('draft')>-1) return 'Contacted'; return 'Researching'; }
+
+async function loadLeads(force){ if(LEADS&&!force) return LEADS;
+  const {data,error}=await sb.from('leads').select('*'); LERR=error?(error.message||'read blocked'):null; LEADS=error?[]:(data||[]); return LEADS; }
+function lSegMatch(l,k){
+  if(k==='all') return true;
+  if(k==='verified') return lStatusClass(l.email_status)==='ok';
+  if(k==='bangalore') return /bang|bengal/i.test(l.city||'');
+  if(LSTAGES.indexOf(k)>-1) return (l.stage||'Researching')===k;
+  return true; }
+function lFiltered(){ const q=LSEARCH.toLowerCase().trim();
+  let list=(LEADS||[]).filter(l=>lSegMatch(l,LSEG));
+  if(q) list=list.filter(l=>((l.business||'')+' '+(l.industry||'')+' '+(l.city||'')+' '+(l.email||'')+' '+(l.instagram||'')).toLowerCase().indexOf(q)>-1);
+  list=list.slice().sort((a,b)=>{
+    if(LSORT==='stage') return (LSTAGES.indexOf(a.stage)-LSTAGES.indexOf(b.stage))||((a.business||'').localeCompare(b.business||''));
+    if(LSORT==='city') return (a.city||'').localeCompare(b.city||'');
+    if(LSORT==='verified') return (lStatusClass(b.email_status)==='ok'?1:0)-(lStatusClass(a.email_status)==='ok'?1:0);
+    return (a.business||'').localeCompare(b.business||''); });
+  return list; }
+
+function lActs(l){ const em=lHasEmail(l)?l.email:''; const ig=lIg(l);
+  return `<div class="lcard-act" onclick="event.stopPropagation()">${em?`<a class="lcact" href="mailto:${esc(em)}" title="Email">✉</a><span class="lcact" onclick="lCopy('${esc(em)}')" title="Copy email">⧉</span>`:''}${ig?`<a class="lcact" href="${ig}" target="_blank" rel="noopener">IG</a>`:''}${l.source_url?`<a class="lcact" href="${esc(l.source_url)}" target="_blank" rel="noopener" title="Source">↗</a>`:''}</div>`; }
+function leadCardBoard(l){
+  return `<div class="lcard" draggable="true" ondragstart="lDragStart(event,'${l.id}')" onclick="editLead('${l.id}')">
+    <div class="lcard-t">${lDot(l)}<b>${esc(l.business)}</b></div>
+    <div class="lcard-s">${esc([l.industry,l.city].filter(Boolean).join(' · ')||'—')}</div>
+    ${lActs(l)}
+  </div>`; }
+function leadsBoard(){ const list=lFiltered(); const by={}; LSTAGES.forEach(s=>by[s]=[]);
+  list.forEach(l=>{ (by[l.stage]||by['Researching']).push(l); });
+  return `<div class="lboard">`+LSTAGES.map(s=>`<div class="lcol" ondragover="lAllow(event,this)" ondragleave="this.classList.remove('over')" ondrop="lDrop(event,'${s}',this)">
+     <div class="lcol-h"><span>${s}</span><span class="n">${by[s].length}</span></div>
+     <div class="lcol-body">${by[s].map(leadCardBoard).join('')||'<div class="muted" style="font:11px var(--mono);padding:8px;text-align:center;opacity:.5">empty</div>'}</div>
+   </div>`).join('')+`</div>`; }
+function leadRowList(l){ const em=lHasEmail(l)?l.email:'';
+  return `<div class="lrow">
+    <span class="cav">${ini(l.business)}</span>
+    <div class="lrow-main" onclick="editLead('${l.id}')" style="cursor:pointer"><div class="lcard-t">${lDot(l)}<b>${esc(l.business)}</b><span class="lstat">· ${lStatusWord(l)}</span></div><div class="lcard-s">${esc([l.industry,l.city,em].filter(Boolean).join(' · ')||'—')}</div></div>
+    <select class="lsel" onchange="changeLeadStage('${l.id}',this.value)" onclick="event.stopPropagation()">${LSTAGES.map(s=>`<option value="${s}" ${l.stage===s?'selected':''}>${s}</option>`).join('')}</select>
+    ${lActs(l)}
+  </div>`; }
+function leadsList(){ const list=lFiltered();
+  if(!list.length) return `<div class="muted" style="padding:26px;text-align:center;font:13px var(--sans)">No leads in this view.</div>`;
+  return list.map(leadRowList).join(''); }
+function renderLeadsBody(){ const b=$('#leadBody'); if(b) b.innerHTML=LVIEW==='board'?leadsBoard():leadsList(); }
+
+async function vLeads(){
+  const list=await loadLeads();
+  const withEmail=list.filter(lHasEmail).length, verified=list.filter(l=>lStatusClass(l.email_status)==='ok').length, qualified=list.filter(l=>['Qualified','Won'].indexOf(l.stage)>-1).length;
+  const segs=[['all','All']].concat(LSTAGES.map(s=>[s,s])).concat([['verified','Verified'],['bangalore','Bangalore']]);
+  const sorts=[['name','Name'],['stage','Stage'],['city','City'],['verified','Verified first']];
+  const kpi=(n,l)=>`<div class="lkpi"><b>${n}</b><span>${l}</span></div>`;
+  $('#view').innerHTML=`
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search leads, city, email, IG…" oninput="LSEARCH=this.value;renderLeadsBody()" value="${esc(LSEARCH)}"></div><button class="btn" onclick="newLead()">+ New lead</button></div>
+  <div class="page-h"><div class="eyebrow">Leads · ${list.length} total</div><h1>Your studio pipeline.</h1></div>
+  ${LERR?`<div class="card" style="border-color:var(--warn);padding:11px 13px;margin-bottom:12px;font:12px/1.5 var(--sans);color:var(--warn)"><b>Leads collection isn't readable yet:</b> ${esc(LERR)}.<br>Deploy the updated <b>firestore.rules</b> in the Firebase console, then reload.</div>`:''}
+  ${list.length?`
+  <div class="lkpis">${kpi(list.length,'Total')}${kpi(withEmail,'With email')}${kpi(verified,'Verified')}${kpi(qualified,'Qualified+')}</div>
+  <div class="lctrls">
+    <div class="ltoggle"><button class="${LVIEW==='board'?'on':''}" onclick="setLView('board')">▦ Board</button><button class="${LVIEW==='list'?'on':''}" onclick="setLView('list')">☰ List</button></div>
+    <div class="lseg">${segs.map(([k,l])=>`<button class="lchip${LSEG===k?' on':''}" onclick="setLSeg('${k}')">${l}<span class="n">${(LEADS||[]).filter(x=>lSegMatch(x,k)).length}</span></button>`).join('')}</div>
+    <select class="lsel" onchange="setLSort(this.value)">${sorts.map(([k,l])=>`<option value="${k}" ${LSORT===k?'selected':''}>Sort: ${l}</option>`).join('')}</select>
+    <button class="btn ghost sm" onclick="lExport()">⬇ CSV</button>
+  </div>
+  <div id="leadBody">${LVIEW==='board'?leadsBoard():leadsList()}</div>
+  <div class="lnote">Drag cards between columns to change stage — saves instantly. Dot colour = email status (green verified · amber unverified · grey none). Hover a card for quick actions.</div>
+  `:emptyState('No leads yet','Import your 96 migrated leads in one click, or add one by hand.',`<button class="btn" onclick="seedLeads()">↓ Import 96 migrated leads</button>&nbsp;<button class="btn ghost" onclick="newLead()">+ New lead</button>`)}`;
+}
+function setLView(k){ LVIEW=k; vLeads(); }
+function setLSeg(k){ LSEG=k; vLeads(); }
+function setLSort(k){ LSORT=k; renderLeadsBody(); }
+function lCopy(e){ try{ navigator.clipboard.writeText(e); toast('Copied '+e); }catch(x){ toast(e); } }
+function lExport(){ const rows=lFiltered(); const cols=['business','stage','industry','city','email','email_status','instagram','source_url','notes'];
+  const csv=[cols.join(',')].concat(rows.map(r=>cols.map(c=>{let v=(r[c]==null?'':String(r[c]));if(/[",\n]/.test(v))v='"'+v.replace(/"/g,'""')+'"';return v;}).join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='aureo-leads.csv'; document.body.appendChild(a); a.click(); a.remove(); }
+function lDragStart(ev,id){ LDRAG=id; try{ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',id);}catch(e){} }
+function lAllow(ev,el){ ev.preventDefault(); if(el) el.classList.add('over'); }
+async function lDrop(ev,stage,el){ ev.preventDefault(); if(el) el.classList.remove('over');
+  const id=LDRAG||(ev.dataTransfer&&ev.dataTransfer.getData('text/plain')); LDRAG=null;
+  if(!id) return; const l=(LEADS||[]).find(x=>x.id===id); if(!l||l.stage===stage) return;
+  l.stage=stage; renderLeadsBody(); const {error}=await sb.from('leads').update({stage}).eq('id',id);
+  if(error){toast(error.message);} else {toast('Moved to '+stage);} }
+async function changeLeadStage(id,stage){ const l=(LEADS||[]).find(x=>x.id===id); if(l) l.stage=stage;
+  const {error}=await sb.from('leads').update({stage}).eq('id',id); if(error){toast(error.message);return;} toast('Stage → '+stage); if(LVIEW==='board') renderLeadsBody(); }
+function leadFormHtml(p,l){ l=l||{}; const opt=LSTAGES.map(s=>`<option value="${s}" ${(l.stage||'Researching')===s?'selected':''}>${s}</option>`).join('');
+  return `<label>Studio / brand name</label><input id="${p}B" value="${esc(l.business||'')}" placeholder="Crafted Pilates">
+  <div class="two"><div><label>Stage</label><select id="${p}S">${opt}</select></div><div><label>City</label><input id="${p}C" value="${esc(l.city||'')}" placeholder="Bangalore"></div></div>
+  <label>Industry / niche</label><input id="${p}I" value="${esc(l.industry||'')}" placeholder="Reformer Pilates">
+  <div class="two"><div><label>Email</label><input id="${p}E" type="email" value="${esc(l.email||'')}"></div><div><label>Instagram</label><input id="${p}Ig" value="${esc(l.instagram||'')}" placeholder="@handle"></div></div>
+  <label>Email status</label><input id="${p}St" value="${esc(l.email_status||'')}" placeholder="Verified (official site)">
+  <label>Source URL</label><input id="${p}U" value="${esc(l.source_url||'')}" placeholder="https://">
+  <label>Notes</label><textarea id="${p}N" rows="2" style="width:100%">${esc(l.notes||'')}</textarea>`; }
+function readLeadForm(p){ return { business:$('#'+p+'B').value.trim(), stage:$('#'+p+'S').value, city:$('#'+p+'C').value.trim(),
+  industry:$('#'+p+'I').value.trim(), email:lCleanEmail($('#'+p+'E').value), instagram:$('#'+p+'Ig').value.trim(),
+  email_status:$('#'+p+'St').value.trim(), source_url:$('#'+p+'U').value.trim(), notes:$('#'+p+'N').value.trim() }; }
+function newLead(){ modal('New lead', leadFormHtml('nl',null)+`<button class="btn wide" style="margin-top:14px" onclick="doNewLead()">Add lead</button>`); }
+async function doNewLead(){ const rec=readLeadForm('nl'); if(!rec.business){toast('Give it a name');return;}
+  if(!rec.email_status) rec.email_status=rec.email?'Manual entry':'No email'; rec.created_at=nowISO();
+  const {data,error}=await sb.from('leads').insert(rec).select().single(); if(error){toast(error.message);return;} LEADS=null; closeModal(); toast('Lead added'); vLeads(); }
+function editLead(id){ const l=(LEADS||[]).find(x=>x.id===id); if(!l){toast('Not found');return;}
+  modal('Edit lead', leadFormHtml('el',l)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn wide" onclick="doEditLead('${id}')">Save</button><button class="btn ghost" onclick="delLead('${id}')">Delete</button></div>`); }
+async function doEditLead(id){ const patch=readLeadForm('el'); if(!patch.business){toast('Give it a name');return;}
+  const {error}=await sb.from('leads').update(patch).eq('id',id); if(error){toast(error.message);return;}
+  const l=(LEADS||[]).find(x=>x.id===id); if(l) Object.assign(l,patch); closeModal(); toast('Saved'); vLeads(); }
+async function delLead(id){ if(!confirm('Delete this lead? This cannot be undone.')) return;
+  const {error}=await sb.from('leads').delete().eq('id',id); if(error){toast(error.message);return;} LEADS=(LEADS||[]).filter(x=>x.id!==id); closeModal(); toast('Deleted'); vLeads(); }
+async function seedLeads(){ if(!confirm('Import '+LEADS_SEED.length+' migrated leads into your live Leads collection?\n\nSafe to re-run — updates by id, no duplicates.')) return;
+  toast('Importing '+LEADS_SEED.length+' leads…'); let n=0;
+  for(const s of LEADS_SEED){ const rec={id:s.Notion_ID,business:s.Business,industry:s.Industry||'',city:s.City||'',email:lCleanEmail(s.Contact_Email),email_status:s.Email_Status||'',instagram:s.Instagram||'',stage:mapStage(s['Stage_(best-effort)']),source_url:s.Notion_URL||'',notes:'',created_at:nowISO()};
+    const {error}=await sb.from('leads').upsert(rec); if(error){toast('Import blocked: '+error.message);break;} n++; }
+  LEADS=null; toast('Imported '+n+' / '+LEADS_SEED.length+' leads'); vLeads(); }
+</script>
+
+
+<!-- AUREO_UX_DASH : sleek dashboard, charts, ⌘K, customizable KPIs -->
+<style>
+/* ---- global soft-theme (sleeker minimal) ---- */
+:root{ --sh:0 1px 2px rgba(22,24,29,.05),0 6px 22px rgba(22,24,29,.06); --sh-lg:0 12px 40px rgba(22,24,29,.14); }
+body{ background:#f6f4ef; }
+.win,.card,.stat,.attn,.ccard,.crow,.lkpi,.lrow{ box-shadow:var(--sh)!important; border-width:1px!important; border-color:rgba(22,24,29,.10)!important; border-radius:16px!important; }
+.btn{ box-shadow:none!important; border-radius:11px!important; border-width:1.5px!important; }
+.btn:not(.ghost){ box-shadow:0 1px 2px rgba(22,24,29,.14)!important; }
+.attn{ background:#fffdf6; }
+/* ---- dashboard ---- */
+.dash-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 18px}
+.dash-h h1{margin:2px 0 0}
+.dash-tools{display:flex;gap:7px;flex-wrap:wrap}
+.today{background:var(--win);border:1px solid rgba(22,24,29,.10);border-radius:18px;box-shadow:var(--sh);padding:16px 18px;margin-bottom:16px}
+.today-h{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px}
+.titem{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid rgba(22,24,29,.07);cursor:pointer}
+.titem:first-of-type{border-top:none}
+.tdot{width:9px;height:9px;border-radius:50%;flex:none}
+.titem b{font:600 13.5px var(--sans)}
+.titem span{font:12px var(--mono);color:var(--muted);margin-left:auto}
+.tclear{font:13px var(--sans);color:var(--muted);padding:6px 2px}
+.kstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px;margin-bottom:16px}
+.kpi2{background:var(--win);border:1px solid rgba(22,24,29,.10);border-radius:15px;box-shadow:var(--sh);padding:13px 15px;cursor:pointer;transition:transform .08s}
+.kpi2:hover{transform:translateY(-2px)}
+.kpi2 .kv{font:800 25px var(--disp);line-height:1.05}
+.kpi2 .kl{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:5px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:13px;margin-bottom:16px}
+.chart{background:var(--win);border:1px solid rgba(22,24,29,.10);border-radius:16px;box-shadow:var(--sh);padding:14px 16px}
+.chart-h{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+.dcols{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+@media(max-width:860px){.dcols{grid-template-columns:1fr}}
+.act-i{padding:9px 0;border-top:1px solid rgba(22,24,29,.07)}
+.act-i:first-child{border-top:none}
+.act-i b{font:600 12.5px var(--sans);display:block}
+.act-i span{font:11.5px var(--mono);color:var(--muted)}
+/* ---- command palette ---- */
+.cmdbg{position:fixed;inset:0;background:rgba(22,24,29,.28);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh}
+.cmd{width:min(560px,92vw);background:var(--win);border:1px solid rgba(22,24,29,.14);border-radius:16px;box-shadow:var(--sh-lg);overflow:hidden}
+.cmd input{width:100%;border:none;outline:none;padding:16px 18px;font:500 15px var(--sans);background:transparent;border-bottom:1px solid rgba(22,24,29,.08)}
+.cmd-list{max-height:52vh;overflow-y:auto;padding:6px}
+.cmd-i{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer}
+.cmd-i.on,.cmd-i:hover{background:rgba(255,204,0,.20)}
+.cmd-i span{font:600 13.5px var(--sans);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmd-i small{font:11px var(--mono);color:var(--muted);flex:none}
+.cmd-empty{padding:22px;text-align:center;color:var(--muted);font:13px var(--sans)}
+</style>
+<script>
+/* ===== AUREO_UX_DASH ===== */
+const ALL_KPIS=[['clients','Clients'],['active','Active projects'],['gate','At the gate'],['review','Awaiting client'],['shipped','Shipped'],['leads','Leads'],['verifiedLeads','Verified leads'],['safe','Safe to spend'],['spent','Spent this month'],['pending','Incoming pending'],['balance','Total balance']];
+const KPI_DEFAULT=['clients','active','leads','verifiedLeads','safe','pending'];
+function getKpis(){ try{ const v=JSON.parse(localStorage.getItem('aureo_kpis')||'null'); return (Array.isArray(v)&&v.length)?v:KPI_DEFAULT.slice(); }catch(e){ return KPI_DEFAULT.slice(); } }
+function setKpis(a){ try{ localStorage.setItem('aureo_kpis',JSON.stringify(a)); }catch(e){} }
+function toggleKpi(id,on){ let a=getKpis(); if(on){ if(a.indexOf(id)<0) a.push(id); } else { a=a.filter(x=>x!==id); } setKpis(a); if(view.v==='home') vDash(); }
+function customizeKpis(){ const sel=getKpis();
+  const css=`<style>.kpickwrap{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin:4px 0 6px}.kpick{display:flex!important;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:11px;cursor:pointer;margin:0!important;text-align:left}.kpick:hover{border-color:var(--ink)}.kpick input{width:16px;height:16px;flex:none;margin:0;accent-color:#16181D;cursor:pointer}.kpick span{font:600 13px var(--sans)!important;text-transform:none!important;letter-spacing:0!important;color:var(--ink)!important;margin:0!important}@media(max-width:520px){.kpickwrap{grid-template-columns:1fr}}</style>`;
+  const rows=ALL_KPIS.map(([id,l])=>`<label class="kpick"><input type="checkbox" ${sel.indexOf(id)>-1?'checked':''} onchange="toggleKpi('${id}',this.checked)"><span>${l}</span></label>`).join('');
+  modal('Customize dashboard KPIs', css+`<div class="kpickwrap">${rows}</div><button class="btn wide" style="margin-top:8px" onclick="closeModal()">Done</button>`);
+}
+function greet(){ const h=new Date().getHours(); return h<12?'morning':h<17?'afternoon':'evening'; }
+
+/* ---- inline SVG charts (no deps) ---- */
+function svgBars(items,opts){ opts=opts||{}; const w=260,h=132; const n=items.length||1; const gap=9; const bw=(w-(n-1)*gap)/n;
+  const max=Math.max(1,...items.map(i=>Math.abs(i.value)||0));
+  const body=items.map((it,i)=>{ const val=Math.abs(it.value)||0; const bh=Math.max(2,Math.round((val/max)*(h-34))); const x=i*(bw+gap); const y=h-22-bh;
+    const vl=it.vlabel!=null?it.vlabel:it.value;
+    return `<rect x="${x.toFixed(1)}" y="${y}" width="${bw.toFixed(1)}" height="${bh}" rx="4" fill="${it.color||'var(--ink)'}"></rect>`
+      +`<text x="${(x+bw/2).toFixed(1)}" y="${h-7}" text-anchor="middle" font-size="9" fill="#8a857c" font-family="monospace">${esc(String(it.short||it.label||''))}</text>`
+      +`<text x="${(x+bw/2).toFixed(1)}" y="${y-4}" text-anchor="middle" font-size="9.5" fill="#4a4a42" font-family="monospace">${esc(String(vl))}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img">${body}</svg>`;
+}
+function last6Months(txns){ const now=new Date(); const arr=[]; const idx={};
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); const o={key,label:d.toLocaleDateString('en',{month:'short'}),inv:0}; arr.push(o); idx[key]=o; }
+  (txns||[]).forEach(t=>{ if(t.direction!=='in')return; const k=String(t.txn_date||'').slice(0,7); if(idx[k]) idx[k].inv+=Number(t.amount||0); });
+  return arr;
+}
+
+/* ---- command palette (⌘K) ---- */
+let CMDSEL=0;
+function cmdIndex(){ const items=[];
+  [['home','Dashboard'],['clients','Clients'],['pipeline','Pipeline'],['leads','Leads'],['monitor','Monitor'],['inbox','Inbox'],['jobs','Jobs'],['money','Money'],['msgs','Messages']].forEach(([v,l])=>items.push({t:l,s:'Go to',fn:()=>nav(v)}));
+  Object.values(CLIENTS||{}).forEach(c=>items.push({t:c.name||'Client',s:'Client',fn:()=>nav('client',c.id)}));
+  (PROJECTS||[]).forEach(p=>items.push({t:p.title||'Project',s:'Project',fn:()=>nav('project',p.id)}));
+  (LEADS||[]).forEach(l=>items.push({t:l.business||'Lead',s:'Lead · '+(l.stage||''),fn:()=>{ LSEARCH=l.business||''; nav('leads'); }}));
+  return items;
+}
+function cmdMatches(){ const q=(($('#cmdI')&&$('#cmdI').value)||'').toLowerCase().trim(); let items=cmdIndex(); if(q) items=items.filter(x=>((x.t||'')+' '+(x.s||'')).toLowerCase().indexOf(q)>-1); return items.slice(0,40); }
+window.__CMD=[];
+function cmdRender(){ CMDSEL=0; window.__CMD=cmdMatches();
+  const el=$('#cmdL'); if(!el)return;
+  el.innerHTML=window.__CMD.map((x,i)=>`<div class="cmd-i${i===0?' on':''}" data-i="${i}" onclick="cmdRun(${i})"><span>${esc(x.t)}</span><small>${esc(x.s)}</small></div>`).join('')||'<div class="cmd-empty">No matches</div>';
+}
+function cmdHi(){ $$('.cmd-i').forEach((el,i)=>el.classList.toggle('on',i===CMDSEL)); const on=$$('.cmd-i')[CMDSEL]; if(on&&on.scrollIntoView) on.scrollIntoView({block:'nearest'}); }
+function cmdRun(i){ const it=window.__CMD[i]; closeCmd(); if(it&&it.fn){ try{ it.fn(); }catch(e){} } }
+function openCmd(){ if($('#cmdbg'))return; const el=document.createElement('div'); el.id='cmdbg'; el.className='cmdbg';
+  el.onclick=e=>{ if(e.target===el) closeCmd(); };
+  el.innerHTML=`<div class="cmd"><input id="cmdI" placeholder="Search or jump to…  (Esc to close)" autocomplete="off" spellcheck="false"><div id="cmdL" class="cmd-list"></div></div>`;
+  document.body.appendChild(el); const inp=$('#cmdI');
+  inp.addEventListener('input',cmdRender);
+  inp.addEventListener('keydown',e=>{ const n=(window.__CMD||[]).length;
+    if(e.key==='ArrowDown'){ e.preventDefault(); CMDSEL=Math.min(n-1,CMDSEL+1); cmdHi(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); CMDSEL=Math.max(0,CMDSEL-1); cmdHi(); }
+    else if(e.key==='Enter'){ e.preventDefault(); cmdRun(CMDSEL); } });
+  cmdRender(); setTimeout(()=>inp.focus(),20);
+}
+function closeCmd(){ const e=$('#cmdbg'); if(e) e.remove(); }
+if(!window.__AUREO_CMDK){ window.__AUREO_CMDK=true; document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); openCmd(); }
+  else if(e.key==='Escape'){ closeCmd(); }
+}); }
+
+/* ---- the new dashboard ---- */
+async function vDash(){
+  const ps=await loadProjects();
+  if(!MONEY){ try{ await loadMoney(); }catch(e){} }
+  if(!LEADS){ try{ await loadLeads(); }catch(e){} }
+  if(!ACT){ sb.from('messages').select('*').order('created_at',{ascending:false}).limit(6).then(r=>{ ACT=r.data||[]; if(view.v==='home'&&ME&&ME.role==='team') vDash(); }).catch(()=>{}); }
+  const MM=MONEY||{invoices:[],payouts:[],txns:[],budgets:[],fin:{},recurring:[],accounts:[]};
+  const _td=today10();
+  const mPendingIn=MM.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+Number(i.amount||0),0);
+  const mSpent=MM.txns.filter(t=>t.direction==='out'&&inMonth(t.txn_date)).reduce((s,t)=>s+Number(t.amount||0),0);
+  const mAcc=MM.accounts.reduce((s,a)=>s+Number(a.balance||0),0);
+  const mAllIn=MM.txns.filter(t=>t.direction==='in').reduce((s,t)=>s+Number(t.amount||0),0);
+  const mAllOut=MM.txns.filter(t=>t.direction==='out').reduce((s,t)=>s+Number(t.amount||0),0);
+  const mBalance=MM.accounts.length?mAcc:(Number(MM.fin.opening_balance||0)+mAllIn-mAllOut);
+  const mToPay=MM.payouts.filter(p=>p.status!=='paid').reduce((s,p)=>s+Number(p.amount||0),0);
+  const mSaved=MM.txns.filter(t=>t.direction==='out'&&t.category==='Savings'&&inMonth(t.txn_date)).reduce((s,t)=>s+Number(t.amount||0),0);
+  const mSavR=Math.max(0,Number(MM.fin.monthly_savings_target||0)-mSaved);
+  const mFY=fyOf(_td); const mFyIn=MM.txns.filter(t=>t.direction==='in'&&fyOf(t.txn_date)===mFY).reduce((s,t)=>s+Number(t.amount||0),0);
+  const mTax=Math.round(mFyIn*Number(MM.fin.tax_reserve_pct||0)/100);
+  const mBills=MM.recurring.filter(r=>r.active!==false&&!inMonth(r.last_paid)).reduce((s,r)=>s+Number(r.amount||0),0);
+  const mSafe=mBalance-(mToPay+mTax+mSavR+mBills);
+
+  const attn=ps.filter(p=>p.stage===3);
+  const od=ps.filter(p=>{ const d=dueMeta(p); return d&&d.rank===0; });
+  const soon=ps.filter(p=>{ const d=dueMeta(p); return d&&d.rank===1; });
+  const leads=LEADS||[];
+  const hot=leads.filter(l=>lStatusClass(l.email_status)==='ok' && ['Researching','Contacted'].indexOf(l.stage)>-1);
+
+  const KV={
+    clients:['Clients',Object.keys(CLIENTS).length,"nav('clients')"],
+    active:['Active',ps.filter(p=>p.stage<4).length,"nav('pipeline')"],
+    gate:['At the gate',ps.filter(p=>p.stage===2).length,"nav('pipeline')"],
+    review:['Awaiting client',ps.filter(p=>p.stage===3).length,"nav('pipeline')"],
+    shipped:['Shipped',ps.filter(p=>p.stage===4).length,"nav('pipeline')"],
+    leads:['Leads',leads.length,"nav('leads')"],
+    verifiedLeads:['Verified leads',leads.filter(l=>lStatusClass(l.email_status)==='ok').length,"nav('leads')"],
+    safe:['Safe to spend',(mSafe<0?'−':'')+inrShort(Math.abs(mSafe)),"nav('money')"],
+    spent:['Spent this month',inrShort(mSpent),"nav('money')"],
+    pending:['Incoming pending',inrShort(mPendingIn),"nav('money')"],
+    balance:['Total balance',inrShort(mBalance),"nav('money')"]
+  };
+  const kpiHtml=getKpis().filter(id=>KV[id]).map(id=>{ const k=KV[id]; return `<div class="kpi2" onclick="${k[2]}"><div class="kv">${k[1]}</div><div class="kl">${k[0]}</div></div>`; }).join('');
+
+  const T=[];
+  if(od.length) T.push(['var(--warn)',`${od.length} deliverable${od.length>1?'s':''} overdue`,esc(od.slice(0,2).map(p=>p.title).join(', ')),"nav('pipeline')"]);
+  if(attn.length) T.push(['#4a7cff',`${attn.length} awaiting client review`,'nudge if it’s been a while',"nav('pipeline')"]);
+  if(soon.length) T.push(['var(--gold)',`${soon.length} due in the next few days`,esc(soon.slice(0,2).map(p=>p.title).join(', ')),"nav('pipeline')"]);
+  if(hot.length) T.push(['var(--ok)',`${hot.length} hot leads ready to contact`,'verified · early stage',"nav('leads')"]);
+  const todayHtml=`<div class="today-h">Today · what needs you</div>`+(T.length?T.map(t=>`<div class="titem" onclick="${t[3]}"><span class="tdot" style="background:${t[0]}"></span><b>${t[1]}</b><span>${t[2]}</span></div>`).join(''):`<div class="tclear">All clear — nothing overdue or waiting. ✨</div>`);
+
+  const funnel=[['Brief',0],['Prod',1],['Gate',2],['Review',3],['Ship',4]].map(([l,st])=>({label:l,short:l,value:ps.filter(p=>p.stage===st).length,color:'#16181D'}));
+  const lstg=LSTAGES.map(s=>({label:s,short:s.slice(0,4),value:leads.filter(l=>(l.stage||'Researching')===s).length,color:'#7c5cff'}));
+  const rev=last6Months(MM.txns).map(m=>({label:m.label,short:m.label,value:Math.round(m.inv),vlabel:m.inv?inrShort(m.inv):'0',color:'#2f9e44'}));
+
+  const chart=(t,svg)=>`<div class="chart"><div class="chart-h">${t}</div>${svg}</div>`;
+  const importBanner=(ME.email===OWNER_EMAIL&&Object.keys(CLIENTS).length===0&&ps.length===0)?`<div class="attn" style="border-color:var(--blue);cursor:pointer;margin-bottom:14px" onclick="migrate()">${ICON.clock}<div><b>Import your data from the old app →</b> Click to pull clients, projects & money.</div></div>`:'';
+  const actHtml=(ACT&&ACT.length)?ACT.map(m=>{ const pr=ps.find(x=>x.id===m.project_id); const body=String(m.body||m.text||m.message||'').slice(0,90); return `<div class="act-i"><b>${esc((pr&&pr.title)||'Message')}</b><span>${esc(body||'—')}</span></div>`; }).join(''):'<div class="muted" style="font:12px var(--sans);padding:12px">No recent activity.</div>';
+
+  $('#view').innerHTML=`
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search projects & clients…  (⌘K)" oninput="SEARCH=this.value;filterHome()"></div><button class="btn" onclick="newProject()">+ New project</button></div>
+  <div class="dash-h">
+    <div><div class="eyebrow">The studio floor</div><h1>Good ${greet()}, ${esc((ME.name||'there').split(' ')[0])}.</h1></div>
+    <div class="dash-tools"><button class="btn ghost sm" onclick="openCmd()">⌘K Search</button><button class="btn ghost sm" onclick="customizeKpis()">⚙ KPIs</button><button class="btn ghost sm" onclick="toggleDemo()">🕶 Demo</button></div>
+  </div>
+  ${importBanner}
+  <div class="today">${todayHtml}</div>
+  <div class="kstrip">${kpiHtml}</div>
+  <div class="charts">${chart('Pipeline funnel',svgBars(funnel))}${chart('Leads by stage',svgBars(lstg))}${chart('Cash in · last 6 months',svgBars(rev))}</div>
+  <div class="dcols">
+    <div>${winWrap('ACTIVE WORK', `<div id="homeProjects">${ps.length?`<div class="grid">${ps.slice(0,8).map(p=>projCard(p,false)).join('')}</div>`:emptyState('No projects yet','Add your first client + project.',`<button class="btn" onclick="newProject()">+ New project</button>`)}</div>`)}</div>
+    <div>${winWrap('ACTIVITY', actHtml)}</div>
+  </div>`;
+}
+</script>
+
+
+<style>
+/* ===== AUREO_UX_THEME — unified sleek minimal across the whole CRM (cosmetic only) ===== */
+:root{
+  --sh:0 1px 2px rgba(22,24,29,.05),0 6px 22px rgba(22,24,29,.06);
+  --sh-lg:0 14px 46px rgba(22,24,29,.16);
+  --line:rgba(22,24,29,.10);
+}
+body{ background:#f6f4ef; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+
+/* --- card & panel containers --- */
+.win,.card,.stat,.attn,.ccard,.crewcard,.pcard,.jrow,.jmv,.invsheet,.filerow,.item,.crow{
+  box-shadow:var(--sh)!important; border:1px solid var(--line)!important; border-radius:16px!important;
+}
+.win-bar{ border-bottom:1px solid var(--line)!important; border-radius:16px 16px 0 0!important; background:transparent!important; letter-spacing:.45px; }
+.stat{ border-radius:14px!important; }
+.attn{ background:#fffdf6!important; border-radius:14px!important; }
+
+/* --- pipeline / kanban --- */
+.kbcol{ background:rgba(22,24,29,.035)!important; border:1px solid var(--line)!important; border-radius:16px!important; box-shadow:none!important; }
+.kbcard{ box-shadow:var(--sh)!important; border:1px solid var(--line)!important; border-radius:13px!important; }
+.pbar{ border-radius:999px!important; overflow:hidden; }
+
+/* --- buttons --- */
+.btn{ box-shadow:none!important; border:1.5px solid var(--ink)!important; border-radius:11px!important; }
+.btn:not(.ghost){ box-shadow:0 1px 2px rgba(22,24,29,.14)!important; }
+.btn.ghost{ border-color:var(--line)!important; }
+.iconbtn{ border:1px solid var(--line)!important; border-radius:10px!important; box-shadow:none!important; }
+
+/* --- chips / pills / inline actions --- */
+.chip,.jchip,.cact,.mpill,.tag,.cli-toggle button,.stagectl,.cli-sort{ border-radius:999px!important; }
+.chip,.jchip{ border:1.5px solid var(--line)!important; }
+.chip.on,.jchip.on{ background:var(--gold)!important; border-color:var(--ink)!important; }
+.cli-toggle{ border:1.5px solid var(--line)!important; border-radius:999px!important; overflow:hidden; }
+
+/* --- inputs --- */
+.search{ border:1px solid var(--line)!important; border-radius:12px!important; box-shadow:none!important; }
+#modal input,#modal select,#modal textarea,.modal input,.modal select,.modal textarea,.composer input,.composer textarea,.cli-sort,.lsel{
+  border:1px solid rgba(22,24,29,.16)!important; border-radius:10px!important; box-shadow:none!important;
+}
+
+/* --- modal --- */
+#modal.modal,.modal{ border-radius:20px!important; box-shadow:var(--sh-lg)!important; border:1px solid var(--line)!important; }
+#modalBg,.modal-bg{ backdrop-filter:blur(4px); background:rgba(22,24,29,.30)!important; }
+
+/* --- sidebar / mobile nav --- */
+.side{ background:#fbfaf6!important; border-right:1px solid var(--line)!important; }
+.nav-i{ border-radius:11px!important; box-shadow:none!important; }
+.nav-i.on{ background:var(--gold)!important; box-shadow:none!important; }
+.nav-i:hover{ background:rgba(22,24,29,.05); }
+.mobnav{ background:#fbfaf6!important; border-top:1px solid var(--line)!important; }
+
+/* --- money tables --- */
+.invtbl th,.invtbl td{ border-color:var(--line)!important; }
+.invtbl th{ font-weight:600; color:var(--muted); }
+
+/* --- misc --- */
+.toast{ border-radius:12px!important; box-shadow:var(--sh-lg)!important; }
+.page-h{ margin-bottom:16px!important; }
+.page-h h1{ letter-spacing:-.4px; }
+.eyebrow{ letter-spacing:.6px; }
+.msg{ border-radius:14px!important; }
+</style>
+
+
+<!-- AUREO_CONTENT : content calendar & planner (client-transparent) -->
+<style>
+.caltop{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 16px}
+.calnav{display:flex;align-items:center;gap:6px}
+.calnav b{font:700 15px var(--sans);min-width:150px;text-align:center}
+.cbtn{border:1.5px solid var(--line);background:var(--win);border-radius:9px;padding:6px 10px;font:700 12px var(--mono);cursor:pointer;color:var(--ink)}
+.cbtn:hover{border-color:var(--ink)}
+.calgrid{background:var(--win);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);overflow:hidden}
+.calhead{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(22,24,29,.03);border-bottom:1px solid var(--line)}
+.calhead span{padding:9px 8px;font:700 10.5px var(--mono);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left}
+.calbody{display:grid;grid-template-columns:repeat(7,1fr)}
+.calc{min-height:92px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px 5px 6px;overflow:hidden}
+.calc:nth-child(7n){border-right:none}
+.calc.out{background:rgba(22,24,29,.02)}
+.calc.out .cald{opacity:.35}
+.calc.today .cald{background:var(--gold);color:var(--ink);border-radius:7px;padding:0 5px}
+.cald{font:700 11.5px var(--mono);color:var(--sec);margin-bottom:4px;display:inline-block}
+.calchip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:7px;padding:3px 6px;margin-bottom:4px;font:600 11px var(--sans);cursor:pointer;background:var(--win);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.calchip:hover{border-color:var(--ink)}
+.cdot{width:7px;height:7px;border-radius:50%;flex:none}
+.cfb{margin-left:auto;font-size:11px}
+.clist-day{margin-bottom:16px}
+.clist-h{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:0 2px 8px}
+.crowc{display:flex;align-items:center;gap:11px;background:var(--win);border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);padding:10px 13px;margin-bottom:8px;cursor:pointer}
+.crowc:hover{border-color:var(--ink)}
+.cpill{font:800 9px var(--mono);text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:999px;border:1.5px solid var(--ink)}
+.cmeta{font:11px var(--mono);color:var(--muted)}
+.clegend{display:flex;gap:12px;flex-wrap:wrap;margin:12px 2px 0;font:11px var(--mono);color:var(--muted)}
+.clegend span{display:inline-flex;align-items:center;gap:5px}
+</style>
+<script>
+/* ===== AUREO_CONTENT — content calendar & planner ===== */
+const CSTATUSES=['Idea','Drafting','Review','Scheduled','Posted'];
+const CSTATUS_COLOR={Idea:'#8a857c',Drafting:'#4a7cff',Review:'#e8590c',Scheduled:'#7c5cff',Posted:'#2f9e44'};
+const CPLATFORMS=['Instagram Post','Reel','Story','Carousel','YouTube','LinkedIn','Facebook','TikTok'];
+let CONTENT=null, CMONTH=new Date(), CFILTER='all', CVIEWM='month', CFB={}, CFB_LOADED=false;
+function cStatusColor(s){ return CSTATUS_COLOR[s]||'#8a857c'; }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function prettyDate(s){ if(!s)return ''; const d=new Date(s+'T00:00:00'); if(isNaN(d))return s; return d.toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short'}); }
+async function loadContent(force){ if(CONTENT&&!force) return CONTENT; const {data,error}=await sb.from('content').select('*'); CONTENT=error?[]:(data||[]); return CONTENT; }
+async function loadCFB(){ CFB={}; try{ const ps=(PROJECTS||await loadProjects()).filter(p=>p.share_token);
+  for(const p of ps){ try{ const sd=await fdb.collection('shares').doc(p.share_token).get(); if(sd.exists){ const ca=(sd.data()||{}).client_action||{}; for(const k in ca){ if(k.indexOf('content_')===0) CFB[k.slice(8)]=ca[k]; } } }catch(e){} }
+ }catch(e){} CFB_LOADED=true; }
+function fbMark(fb){ if(!fb)return ''; return fb.action==='approved'?'<span class="cfb" title="Client approved">✅</span>':'<span class="cfb" title="Client asked for changes">✏️</span>'; }
+
+function calWeeksNeeded(y,m){ const first=new Date(y,m,1); const lead=(first.getDay()+6)%7; const days=new Date(y,m+1,0).getDate(); return Math.ceil((lead+days)/7); }
+function calMonth(y,m,byDay){
+  const dow=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const first=new Date(y,m,1); const lead=(first.getDay()+6)%7; const start=new Date(y,m,1-lead);
+  const n=calWeeksNeeded(y,m)*7; let cells='';
+  const todayKey=ymd(new Date());
+  for(let i=0;i<n;i++){ const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i); const key=ymd(d); const out=d.getMonth()!==m;
+    const posts=(byDay[key]||[]).slice().sort((a,b)=>(a.status||'').localeCompare(b.status||''));
+    cells+=`<div class="calc${out?' out':''}${key===todayKey?' today':''}" ondblclick="newPost('${key}')" title="Double-click to add a post">
+      <span class="cald">${d.getDate()}</span>
+      ${posts.map(p=>`<div class="calchip" onclick="event.stopPropagation();editPost('${p.id}')"><span class="cdot" style="background:${cStatusColor(p.status)}"></span>${esc(((p.platform?p.platform.split(' ')[0]+' · ':'')+(p.caption||p.title||'Post'))).slice(0,26)}${fbMark(CFB[p.id])}</div>`).join('')}
+    </div>`;
+  }
+  return `<div class="calgrid"><div class="calhead">${dow.map(x=>`<span>${x}</span>`).join('')}</div><div class="calbody">${cells}</div></div>`;
+}
+function calList(list){
+  const up=list.filter(x=>x.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!up.length) return `<div class="muted" style="padding:26px;text-align:center;font:13px var(--sans)">No scheduled posts. Hit “+ New post”.</div>`;
+  const groups={}; up.forEach(x=>{ (groups[x.date]=groups[x.date]||[]).push(x); });
+  return Object.keys(groups).sort().map(dt=>`<div class="clist-day"><div class="clist-h">${prettyDate(dt)}</div>${groups[dt].map(p=>{ const c=CLIENTS[p.client_id]; return `<div class="crowc" onclick="editPost('${p.id}')"><span class="cpill" style="background:${cStatusColor(p.status)}1f;color:${cStatusColor(p.status)}">${esc(p.status||'')}</span><div style="flex:1;min-width:0"><div style="font:600 13.5px var(--sans)">${esc(p.caption||p.title||'Untitled post')}</div><div class="cmeta">${esc([p.platform,(c&&c.name)||''].filter(Boolean).join(' · ')||'—')}</div></div>${fbMark(CFB[p.id])}${p.asset_url?`<a class="lcact" href="${esc(p.asset_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>`:''}</div>`; }).join('')}</div>`).join('');
+}
+async function vCalendar(){
+  const content=await loadContent();
+  if(Object.keys(CLIENTS).length===0){ try{ await loadProjects(); }catch(e){} }
+  if(!CFB_LOADED){ loadCFB().then(()=>{ if(view.v==='calendar') vCalendar(); }); }
+  const y=CMONTH.getFullYear(), m=CMONTH.getMonth();
+  const filt=content.filter(x=>CFILTER==='all'||x.client_id===CFILTER);
+  const byDay={}; filt.forEach(x=>{ if(x.date) (byDay[x.date]=byDay[x.date]||[]).push(x); });
+  const monthLabel=CMONTH.toLocaleDateString('en',{month:'long',year:'numeric'});
+  const clientOpts=`<option value="all">All clients</option>`+Object.values(CLIENTS).map(c=>`<option value="${c.id}" ${CFILTER===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+  const posted=filt.filter(x=>x.status==='Posted').length, review=filt.filter(x=>x.status==='Review').length, sched=filt.filter(x=>x.status==='Scheduled').length;
+  $('#view').innerHTML=`
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Filter isn’t here — use the client & month controls" disabled style="opacity:.5"></div><button class="btn" onclick="newPost()">+ New post</button></div>
+  <div class="page-h"><div class="eyebrow">Content calendar · ${filt.length} posts · ${sched} scheduled · ${posted} posted</div><h1>What’s going out, and when.</h1></div>
+  <div class="caltop">
+    <select class="lsel" onchange="setCFilter(this.value)">${clientOpts}</select>
+    <div class="ltoggle"><button class="${CVIEWM==='month'?'on':''}" onclick="setCViewM('month')">▦ Month</button><button class="${CVIEWM==='list'?'on':''}" onclick="setCViewM('list')">☰ List</button></div>
+    ${CVIEWM==='month'?`<div class="calnav" style="margin-left:auto"><button class="cbtn" onclick="calShift(-1)">‹</button><b>${monthLabel}</b><button class="cbtn" onclick="calShift(1)">›</button><button class="cbtn" onclick="calToday()">Today</button></div>`:''}
+  </div>
+  ${CVIEWM==='month'?calMonth(y,m,byDay):calList(filt)}
+  <div class="clegend">${CSTATUSES.map(s=>`<span><span class="cdot" style="background:${cStatusColor(s)}"></span>${s}</span>`).join('')}<span>✅ client approved</span><span>✏️ changes asked</span></div>`;
+}
+function setCFilter(v){ CFILTER=v; vCalendar(); }
+function setCViewM(v){ CVIEWM=v; vCalendar(); }
+function calShift(n){ CMONTH=new Date(CMONTH.getFullYear(),CMONTH.getMonth()+n,1); vCalendar(); }
+function calToday(){ CMONTH=new Date(); vCalendar(); }
+
+function postFormHtml(p,l){ l=l||{};
+  const cs=Object.values(CLIENTS).map(c=>`<option value="${c.id}" ${l.client_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+  const st=CSTATUSES.map(s=>`<option value="${s}" ${(l.status||'Idea')===s?'selected':''}>${s}</option>`).join('');
+  const pl=CPLATFORMS.map(x=>`<option value="${x}" ${l.platform===x?'selected':''}>${x}</option>`).join('');
+  return `<label>Client</label><select id="${p}Cl">${cs||'<option value="">— add a client first —</option>'}</select>
+  <div class="two"><div><label>Date</label><input id="${p}D" type="date" value="${esc(l.date||'')}"></div><div><label>Platform</label><select id="${p}P"><option value="">—</option>${pl}</select></div></div>
+  <label>Caption / hook</label><textarea id="${p}Cap" rows="2" style="width:100%" placeholder="What the post says…">${esc(l.caption||l.title||'')}</textarea>
+  <div class="two"><div><label>Status</label><select id="${p}S">${st}</select></div><div><label>Asset link (Drive/preview)</label><input id="${p}U" value="${esc(l.asset_url||'')}" placeholder="https://"></div></div>
+  <label>Internal notes</label><input id="${p}N" value="${esc(l.notes||'')}" placeholder="Team-only, not shown to client">`;
+}
+function readPostForm(p){ return { client_id:$('#'+p+'Cl').value, date:$('#'+p+'D').value||'', platform:$('#'+p+'P').value||'', caption:$('#'+p+'Cap').value.trim(), status:$('#'+p+'S').value, asset_url:$('#'+p+'U').value.trim(), notes:$('#'+p+'N').value.trim() }; }
+function newPost(date){ if(Object.keys(CLIENTS).length===0){ toast('Add a client first'); return; }
+  modal('New post', postFormHtml('np',{date:date||ymd(new Date()),status:'Idea'})+`<button class="btn wide" style="margin-top:14px" onclick="doSavePost()">Schedule post</button>`); }
+async function doSavePost(){ const rec=readPostForm('np'); if(!rec.client_id){toast('Pick a client');return;} if(!rec.caption){toast('Add a caption');return;} rec.created_at=nowISO();
+  const {data,error}=await sb.from('content').insert(rec).select().single(); if(error){toast(error.message);return;} CONTENT=null; closeModal(); toast('Post added'); syncClientShares(rec.client_id); vCalendar(); }
+function editPost(id){ const l=(CONTENT||[]).find(x=>x.id===id); if(!l){toast('Not found');return;} const fb=CFB[id];
+  const fbNote=fb?`<div class="card" style="padding:9px 11px;margin-bottom:10px;font:12px var(--sans)"><b>${fb.action==='approved'?'✅ Client approved':'✏️ Client asked for changes'}</b>${fb.note?' — “'+esc(fb.note)+'”':''}</div>`:'';
+  modal('Edit post', fbNote+postFormHtml('ep',l)+`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn wide" onclick="doEditPost('${id}')">Save</button><button class="btn ghost" onclick="delPost('${id}')">Delete</button></div>`); }
+async function doEditPost(id){ const patch=readPostForm('ep'); if(!patch.client_id){toast('Pick a client');return;}
+  const {error}=await sb.from('content').update(patch).eq('id',id); if(error){toast(error.message);return;}
+  const l=(CONTENT||[]).find(x=>x.id===id); const oldClient=l&&l.client_id; if(l) Object.assign(l,patch); closeModal(); toast('Saved');
+  syncClientShares(patch.client_id); if(oldClient&&oldClient!==patch.client_id) syncClientShares(oldClient); vCalendar(); }
+async function delPost(id){ if(!confirm('Delete this post?'))return; const l=(CONTENT||[]).find(x=>x.id===id); const cid=l&&l.client_id;
+  const {error}=await sb.from('content').delete().eq('id',id); if(error){toast(error.message);return;} CONTENT=(CONTENT||[]).filter(x=>x.id!==id); closeModal(); toast('Deleted'); if(cid) syncClientShares(cid); vCalendar(); }
+/* push the client's content into every shared project's snapshot so the progress page shows it */
+async function syncClientShares(client_id){ try{ const ps=(PROJECTS||await loadProjects()).filter(p=>p.client_id===client_id&&p.share_token); for(const p of ps){ try{ await syncShare(p.id); }catch(e){} } }catch(e){} }
+</script>
+
+
+<!-- AUREO_DEMO : display-only demo mode — masks client identities, never touches data -->
+<style>
+#demoToggle{position:fixed;right:14px;bottom:14px;z-index:9998;display:flex;align-items:center;gap:8px;background:var(--ink);color:var(--cream);border:none;border-radius:999px;padding:9px 15px;font:700 12px var(--mono);cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+#demoToggle.on{background:var(--gold);color:var(--ink)}
+#demoToggle .d{width:8px;height:8px;border-radius:50%;background:#e8590c;flex:none}
+#demoToggle.on .d{background:var(--ink)}
+#demoBanner{position:fixed;top:0;left:0;right:0;z-index:9997;background:var(--gold);color:var(--ink);text-align:center;font:800 11px var(--mono);letter-spacing:.6px;padding:5px;display:none}
+body.demo-on #demoBanner{display:block}
+</style>
+<script>
+/* ===== AUREO_DEMO — mask client identities for demos (display only) ===== */
+let DEMO=false; try{ DEMO=localStorage.getItem('aureo_demo')==='1'; }catch(e){}
+let MASKING=false, DOBS=null;
+function _ini(n){ return (typeof ini==='function')?ini(n):((n||'?').trim()[0]||'?').toUpperCase(); }
+function demoLabel(i){ const A=65; return 'Client '+(i<26?String.fromCharCode(A+i):(String.fromCharCode(A+Math.floor(i/26)-1)+String.fromCharCode(A+i%26))); }
+function demoMaps(){
+  const cl=Object.values(CLIENTS||{}); const sorted=cl.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const alias={}; sorted.forEach((c,i)=>{ alias[c.id]=demoLabel(i); });
+  const reps=[];
+  cl.forEach(c=>{ const al=alias[c.id]||'Client';
+    if(c.name) reps.push([c.name, al]);
+    const em=(c.email&&String(c.email).indexOf('@')>-1)?c.email:''; if(em) reps.push([em, al.replace(/\s+/g,'').toLowerCase()+'@demo.co']);
+    if(c.contact && c.contact!==c.name) reps.push([c.contact, al+' Contact']);
+    if(c.phone) reps.push([String(c.phone), '+91 90000 00000']);
+  });
+  reps.sort((a,b)=>b[0].length-a[0].length);
+  return {alias,reps,cl};
+}
+function maskAll(){
+  if(!DEMO) return; const {alias,reps,cl}=demoMaps(); if(!reps.length) return;
+  MASKING=true;
+  try{
+    const nw=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,null); const nodes=[]; let n;
+    while(n=nw.nextNode()) nodes.push(n);
+    nodes.forEach(node=>{ const p=node.parentNode; if(p&&(p.id==='demoToggle'||p.id==='demoBanner'))return;
+      let t=node.nodeValue; if(!t||!t.trim())return; const o=t;
+      for(let i=0;i<reps.length;i++){ if(t.indexOf(reps[i][0])>-1) t=t.split(reps[i][0]).join(reps[i][1]); }
+      // mask money AMOUNTS only (keep the Money section, counts, %, dates intact)
+      t=t.replace(/(₹|\$|€|£)\s?\d[\d,]*(?:\.\d+)?\s?(?:Cr|L|lakh|k|K|M|B)?/g, '$1•••');
+      t=t.replace(/\b\d[\d,]*(?:\.\d+)?\s?(INR|USD|EUR|GBP|AED)\b/g, '••• $1');
+      if(t!==o) node.nodeValue=t;
+    });
+    // avatars (initials) — swap to the alias initials
+    document.querySelectorAll('.cav,#meAv,.meAv').forEach(el=>{ const t=(el.textContent||'').trim();
+      if(t.length>=1&&t.length<=2){ const c=cl.find(x=>_ini(x.name)===t); if(c) el.textContent=_ini(alias[c.id]); } });
+  }finally{ MASKING=false; }
+}
+function startDObs(){ if(DOBS)return; try{ DOBS=new MutationObserver(()=>{ if(!DEMO||MASKING)return; clearTimeout(DOBS._t); DOBS._t=setTimeout(maskAll,40); }); DOBS.observe(document.body,{childList:true,subtree:true,characterData:true}); }catch(e){} }
+function updateDemoBtn(){ const b=document.getElementById('demoToggle'); if(b){ b.classList.toggle('on',DEMO); const t=b.querySelector('.t'); if(t) t.textContent='Demo: '+(DEMO?'ON':'off'); } document.body.classList.toggle('demo-on',DEMO); }
+function setDemo(on){ DEMO=on; try{ localStorage.setItem('aureo_demo',on?'1':'0'); }catch(e){} updateDemoBtn();
+  if(on){ startDObs(); maskAll(); }
+  else { if(typeof render==='function'){ try{ render(); }catch(e){} } }  // re-render restores real names from untouched data
+}
+function toggleDemo(){ setDemo(!DEMO); }
+function initDemo(){ if(document.getElementById('demoToggle'))return;
+  const b=document.createElement('button'); b.id='demoToggle'; b.type='button'; b.innerHTML='<span class="d"></span><span class="t"></span>'; b.onclick=toggleDemo; document.body.appendChild(b);
+  const ban=document.createElement('div'); ban.id='demoBanner'; ban.textContent='DEMO MODE · client identities hidden'; document.body.appendChild(ban);
+  updateDemoBtn(); startDObs(); if(DEMO) setTimeout(maskAll,60);
+}
+if(document.readyState!=='loading') initDemo(); else document.addEventListener('DOMContentLoaded',initDemo);
+</script>
+
+
+<!-- AUREO_CLIENTS2 : modern client roster (reuses existing data + helpers) -->
+<style>
+.cl2-rib{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 16px}
+.cl2-stat{display:inline-flex;align-items:baseline;gap:7px;background:var(--win);border:1px solid var(--line);border-radius:999px;padding:7px 14px;box-shadow:var(--sh)}
+.cl2-stat b{font:800 16px var(--disp)}
+.cl2-stat span{font:700 10.5px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.cl2-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.cl2-seg{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:200px}
+.cl2-chip{font:700 11px var(--mono);border:1.5px solid var(--line);background:var(--win);border-radius:999px;padding:5px 12px;cursor:pointer;color:var(--sec)}
+.cl2-chip:hover{border-color:var(--ink)}
+.cl2-chip.on{background:var(--gold);border-color:var(--ink);color:var(--ink)}
+.cl2-chip .n{opacity:.5;margin-left:5px}
+.cl2-sel,.cl2-tog button{font:600 12px var(--sans);border:1.5px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--win);color:var(--ink);cursor:pointer}
+.cl2-tog{display:flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+.cl2-tog button{border:none;border-radius:0}
+.cl2-tog button.on{background:var(--ink);color:var(--cream)}
+.cl2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.cl2-card{background:var(--win);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:17px 18px;cursor:pointer;transition:transform .08s,box-shadow .08s;display:flex;flex-direction:column;gap:14px}
+.cl2-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(22,24,29,.10);border-color:rgba(22,24,29,.2)}
+.cl2-top{display:flex;align-items:center;gap:12px}
+.cl2-av{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffe27a,#ffcc00);border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);flex:none}
+.cl2-id{flex:1;min-width:0}
+.cl2-name{font:800 15.5px var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2-sub{font:12px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cl2-badge{display:inline-flex;align-items:center;gap:5px;font:800 10px var(--mono);text-transform:uppercase;letter-spacing:.03em;padding:4px 9px;border-radius:999px;flex:none}
+.cl2-badge .dot{width:7px;height:7px;border-radius:50%}
+.cl2-metrics{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(22,24,29,.02)}
+.cl2-metrics div{padding:10px 8px;text-align:center;border-right:1px solid var(--line)}
+.cl2-metrics div:last-child{border-right:none}
+.cl2-metrics b{display:block;font:800 16px var(--disp);line-height:1}
+.cl2-metrics span{font:700 9px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:4px;display:block}
+.cl2-metrics .due b{color:var(--warn)}
+.cl2-act{display:flex;gap:7px;flex-wrap:wrap}
+.cl2-a{font:700 11.5px var(--mono);border:1.5px solid var(--line);border-radius:8px;padding:5px 10px;text-decoration:none;color:var(--ink);background:var(--cream);cursor:pointer}
+.cl2-a:hover{background:var(--gold);border-color:var(--ink)}
+.cl2-a.go{margin-left:auto;border:none;background:transparent;color:var(--sec)}
+/* list */
+.cl2-list{display:flex;flex-direction:column;gap:9px}
+.cl2-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center;background:var(--win);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:11px 15px;cursor:pointer}
+.cl2-row:hover{border-color:rgba(22,24,29,.22)}
+.cl2-rm{min-width:0}
+.cl2-rstats{display:flex;gap:16px}
+.cl2-rstats div{text-align:right}.cl2-rstats b{font:800 14px var(--sans);display:block}.cl2-rstats span{font:700 9px var(--mono);color:var(--muted);text-transform:uppercase}
+.cl2-ract{display:flex;gap:6px}
+@media(max-width:640px){.cl2-row{grid-template-columns:auto 1fr;gap:10px}.cl2-rstats,.cl2-ract{grid-column:1/-1;justify-content:flex-start;margin-top:4px}}
+</style>
+<script>
+/* ===== AUREO_CLIENTS2 — modern roster ===== */
+try{ if(CVIEW==='list') CVIEW='cards'; }catch(e){}
+function cl2Status(c){ const s=CSTAT[c.id]||{proj:0}; if(!(s.proj>0)) return ['#8a857c','Prospect']; return isCold(c)?['#e8590c','Needs nudge']:['#1c7a3d','Active']; }
+function cl2Metrics(c){ const s=CSTAT[c.id]||{proj:0,rev:0,due:0};
+  return `<div class="cl2-metrics"><div><b>${s.proj}</b><span>Projects</span></div><div><b>${s.rev?moneyShort(s.rev,c.currency):'—'}</b><span>Collected</span></div><div class="due"><b>${s.due>0?moneyShort(s.due,c.currency):'—'}</b><span>Due</span></div></div>`; }
+function cl2Actions(c,go){ const em=cEmail(c); const wa=waLink(c.phone);
+  return `<div class="cl2-act" onclick="event.stopPropagation()">${wa?`<a class="cl2-a" href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`:''}${c.phone?`<a class="cl2-a" href="tel:${esc(c.phone)}">Call</a>`:''}${em?`<a class="cl2-a" href="mailto:${esc(em)}">Email</a>`:''}${go?`<span class="cl2-a go" onclick="nav('client','${c.id}')">Open →</span>`:''}</div>`; }
+function cliCard2(c){ const em=cEmail(c); const loc=c.country||c.city||''; const st=cl2Status(c);
+  return `<div class="cl2-card" onclick="nav('client','${c.id}')">
+    <div class="cl2-top"><span class="cl2-av">${ini(c.name)}</span><div class="cl2-id"><div class="cl2-name">${esc(c.name)}</div><div class="cl2-sub">${esc(c.contact||em||'—')}${loc?' · '+esc(loc):''}</div></div><span class="cl2-badge" style="color:${st[0]};background:${st[0]}14"><span class="dot" style="background:${st[0]}"></span>${st[1]}</span></div>
+    ${cl2Metrics(c)}
+    ${cl2Actions(c,true)}
+  </div>`; }
+function cliRow2(c){ const em=cEmail(c); const loc=c.country||c.city||''; const st=cl2Status(c); const s=CSTAT[c.id]||{proj:0,rev:0,due:0};
+  return `<div class="cl2-row" onclick="nav('client','${c.id}')">
+    <span class="cl2-av">${ini(c.name)}</span>
+    <div class="cl2-rm"><div class="cl2-name">${esc(c.name)} <span class="cl2-badge" style="color:${st[0]};background:${st[0]}14"><span class="dot" style="background:${st[0]}"></span>${st[1]}</span></div><div class="cl2-sub">${esc(c.contact||em||'—')}${loc?' · '+esc(loc):''}</div></div>
+    <div class="cl2-rstats"><div><b>${s.proj}</b><span>proj</span></div><div><b>${s.rev?moneyShort(s.rev,c.currency):'—'}</b><span>in</span></div><div><b>${s.due>0?moneyShort(s.due,c.currency):'—'}</b><span>due</span></div></div>
+    <div class="cl2-ract">${cl2Actions(c,false)}</div>
+  </div>`; }
+function clientsBody2(){
+  const q=(SEARCH||'').toLowerCase();
+  let list=Object.values(CLIENTS).filter(c=>cSegMatch(c,CSEG)).filter(c=>!q||(c.name||'').toLowerCase().includes(q)||(c.contact||'').toLowerCase().includes(q)||(c.city||'').toLowerCase().includes(q));
+  list.sort((a,b)=>{ const A=CSTAT[a.id]||{},B=CSTAT[b.id]||{};
+    if(CSORT==='proj')return (B.proj||0)-(A.proj||0);
+    if(CSORT==='rev')return (B.rev||0)-(A.rev||0);
+    if(CSORT==='due')return (B.due||0)-(A.due||0);
+    if(CSORT==='new')return (b.created_at||'').localeCompare(a.created_at||'');
+    return (a.name||'').localeCompare(b.name||''); });
+  if(!list.length) return `<div class="muted" style="font-size:13px;padding:34px;text-align:center">No clients${q?' matching “'+esc(SEARCH)+'”':' in this view'}.</div>`;
+  return CVIEW==='list'?`<div class="cl2-list">${list.map(cliRow2).join('')}</div>`:`<div class="cl2-grid">${list.map(cliCard2).join('')}</div>`;
+}
+async function vClients2(){
+  const [ps,inv]=await Promise.all([loadProjects(),loadInvoices()]);
+  const list=Object.values(CLIENTS);
+  CSTAT={}; list.forEach(c=>CSTAT[c.id]={proj:0,rev:0,due:0});
+  ps.forEach(p=>{ const s=CSTAT[p.client_id]; if(s) s.proj++; });
+  inv.forEach(i=>{ const s=CSTAT[i.client_id]; if(!s)return; if(i.status==='paid') s.rev+=Number(i.amount)||0; else s.due+=Number(i.amount)||0; });
+  const active=list.filter(c=>CSTAT[c.id].proj>0).length;
+  const prospects=list.filter(c=>CSTAT[c.id].proj===0).length;
+  const cold=list.filter(c=>isCold(c)).length;
+  const owes=list.filter(c=>(CSTAT[c.id]||{}).due>0).length;
+  if(!list.length){ $('#view').innerHTML=`<div class="topbar"><div class="search">${ICON.search}<input placeholder="Search clients…" disabled style="opacity:.5"></div><button class="btn" onclick="newClient()">+ New client</button></div>`+emptyState('No clients yet','Add your first client to get started.','<button class="btn" onclick="newClient()">+ New client</button>'); return; }
+  const rib=`<div class="cl2-rib"><span class="cl2-stat"><b>${list.length}</b><span>Clients</span></span><span class="cl2-stat"><b>${active}</b><span>Active</span></span><span class="cl2-stat"><b>${prospects}</b><span>Prospects</span></span><span class="cl2-stat"><b>${owes}</b><span>Owe you</span></span><span class="cl2-stat"><b>${cold}</b><span>Cold</span></span></div>`;
+  const segs=CSEGS.map(([k,l])=>`<button class="cl2-chip${CSEG===k?' on':''}" onclick="setCSeg('${k}')">${l}<span class="n">${list.filter(c=>cSegMatch(c,k)).length}</span></button>`).join('');
+  const sort=CSORTS.map(([k,l])=>`<option value="${k}" ${CSORT===k?'selected':''}>${l}</option>`).join('');
+  $('#view').innerHTML=`
+  <div class="topbar"><div class="search">${ICON.search}<input placeholder="Search clients, contacts, city…" oninput="SEARCH=this.value;filterClients()" value="${esc(SEARCH||'')}"></div><button class="btn" onclick="newClient()">+ New client</button></div>
+  <div class="page-h"><div class="eyebrow">Clients · ${list.length} total</div><h1>Your roster.</h1></div>
+  ${rib}
+  <div class="cl2-ctrl">
+    <div class="cl2-seg">${segs}</div>
+    <select class="cl2-sel" onchange="setCSort(this.value)">${sort}</select>
+    <div class="cl2-tog"><button class="${CVIEW!=='list'?'on':''}" onclick="setCView('cards')">▦ Cards</button><button class="${CVIEW==='list'?'on':''}" onclick="setCView('list')">☰ List</button></div>
+  </div>
+  <div id="cliBody">${clientsBody2()}</div>`;
+}
+/* override the roster control handlers to drive the new view */
+window.setCSeg=function(k){ CSEG=k; vClients2(); };
+window.setCView=function(k){ CVIEW=k; vClients2(); };
+window.setCSort=function(k){ CSORT=k; const b=$('#cliBody'); if(b) b.innerHTML=clientsBody2(); };
+window.filterClients=function(){ const b=$('#cliBody'); if(b) b.innerHTML=clientsBody2(); };
+</script>
+
 </body>
 </html>
