@@ -234,6 +234,13 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 .ccold{display:inline-block;margin-left:8px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#fdecc8;color:#8a5a00;padding:2px 8px;border-radius:999px;vertical-align:middle}
 .ccur{display:inline-block;margin-left:7px;font-size:9px;font-weight:800;letter-spacing:.04em;background:#e7eefc;color:#2a52b5;padding:2px 7px;border-radius:999px;vertical-align:middle}
 .fxblend{font-size:11px;font-weight:700;color:#8a857c;white-space:nowrap}
+.crewgrid{display:flex;flex-direction:column;gap:14px}
+.crewcard{background:var(--win);border:2px solid var(--ink);border-radius:12px;box-shadow:2px 2px 0 var(--ink);padding:15px 16px}
+.crewhead{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.crewname{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.crewsub{font-size:12px;color:var(--muted);margin-top:2px}
+.crewcard .crow{margin-bottom:8px;padding:10px 12px}
+.crewcard .crow:last-child{margin-bottom:0}
 .csum .v{font-size:17px;line-height:1.2}
 #invWrap{display:none;position:fixed;inset:0;z-index:200;background:#3a372f;overflow:auto;padding:24px 16px}
 #invWrap.on{display:block}
@@ -565,7 +572,7 @@ async function enter(preUser){
 }
 function buildNav(){
   const items = ME.role==='team'
-    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]]
+    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['crew','Crew',ICON.clients],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]]
     : ME.role==='freelancer'
     ? [['home','My tasks',ICON.folder]]
     : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
@@ -587,6 +594,7 @@ async function render(){
     else if(view.v==='client'&&ME.role==='team') await vClientDetail(view.arg);
     else if(view.v==='clients'&&ME.role==='team') await vClients();
     else if(view.v==='pipeline'&&ME.role==='team') await vPipeline();
+    else if(view.v==='crew'&&ME.role==='team') await vCrew();
     else if(view.v==='inbox'&&ME.role==='team') await vInbox();
     else if(view.v==='jobs'&&ME.role==='team') await vJobs();
     else if(view.v==='money'&&ME.role==='team') await vMoney();
@@ -1135,12 +1143,29 @@ async function createLogin(email, profileData){
 }
 function inviteClient(id){ const c=CLIENTS[id]||{}; const pre=cEmail(c); modal('Give client portal access',`<div class="tiny muted" style="margin-bottom:8px">Creates a login for <b>${esc(c.name||'this client')}</b>. They get an email to set their password, then see ONLY their own projects &amp; progress — never other clients, your freelancers, or your money.</div><label>Client's email</label><input id="ivcE" type="email" value="${esc(pre||'')}" placeholder="client@brand.com"><button class="btn wide" style="margin-top:14px" onclick="doInviteClient('${id}')">Create login &amp; email them</button>`); }
 async function doInviteClient(id){ const c=CLIENTS[id]||{}; const email=$('#ivcE').value.trim(); if(!email){toast('Enter their email');return;} toast('Creating login…'); const uid=await createLogin(email,{role:'client',client_id:id,name:c.name||'Client'}); if(uid){ closeModal(); toast('✓ Client login created — set-password email sent'); } }
-async function assignFreelancer(pid){
-  const [{data:fl},{data:pr}]=await Promise.all([ sb.from('profiles').select('id,name').eq('role','freelancer'), sb.from('projects').select('freelancer_id').eq('id',pid).single() ]);
-  const opts=(fl||[]).map(f=>`<option value="${f.id}" ${pr&&pr.freelancer_id===f.id?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
-  modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">The client never sees this — uploaded work just appears as Aureo's.</div><label>Existing freelancer</label><select id="afS"><option value="">— none —</option>${opts}</select><div class="tiny muted" style="margin:14px 0 6px;font-weight:700;border-top:1.5px dashed rgba(0,0,0,.15);padding-top:12px">— or add a new one —</div><div class="two"><div><label>Name</label><input id="afN" placeholder="Ravi (editor)"></div><div><label>Email</label><input id="afE" type="email" placeholder="ravi@gmail.com"></div></div><button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Assign</button>`);
+async function assignFreelancer(pid){ let p=(PROJECTS||[]).find(x=>x.id===pid)||{}; if(!p.title){ const r=await sb.from('projects').select('*').eq('id',pid).maybeSingle(); if(r.data)p=r.data; }
+  modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">Who's doing the work — your tracking only. The client never sees this; work appears as Aureo's. No login for them — they work in the project's WhatsApp + Drive.</div><label>Freelancer name / role</label><input id="afN" value="${esc(p.freelancer_name||'')}" placeholder="Ravi — editor"><label>WhatsApp / contact (optional)</label><input id="afC" value="${esc(p.freelancer_contact||'')}" placeholder="+91 98xxxxxxxx"><button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Save</button>`);
 }
-async function doAssignFreelancer(pid){ const existing=$('#afS').value||null; const nm=($('#afN')&&$('#afN').value.trim())||''; const em=($('#afE')&&$('#afE').value.trim())||''; let fid=existing, created=false; if(!fid&&em){ toast('Creating freelancer login…'); fid=await createLogin(em,{role:'freelancer',name:nm||'Freelancer'}); if(!fid) return; created=true; } const {error}=await sb.from('projects').update({freelancer_id:fid}).eq('id',pid); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast(fid?('✓ Freelancer assigned'+(created?' — set-password email sent':'')):'Assignment cleared'); render(); }
+async function doAssignFreelancer(pid){ const patch={freelancer_name:$('#afN').value.trim()||null,freelancer_contact:$('#afC').value.trim()||null}; const {error}=await sb.from('projects').update(patch).eq('id',pid); if(error){toast(error.message);return;} const p=(PROJECTS||[]).find(x=>x.id===pid); if(p)Object.assign(p,patch); closeModal(); toast(patch.freelancer_name?'✓ Freelancer saved':'Cleared'); render(); }
+async function vCrew(){
+  const ps=await loadProjects();
+  let dels=[]; try{ const r=await sb.from('deliverables').select('project_id,status'); dels=r.data||[]; }catch(e){}
+  const dByProj={}; dels.forEach(d=>{ (dByProj[d.project_id]=dByProj[d.project_id]||[]).push(d); });
+  const fmap={}; ps.forEach(p=>{ const n=(p.freelancer_name||'').trim(); if(!n)return; if(!fmap[n]) fmap[n]={name:n,contact:'',projects:[]}; if(p.freelancer_contact&&!fmap[n].contact) fmap[n].contact=p.freelancer_contact; fmap[n].projects.push(p); });
+  const crew=Object.values(fmap).sort((a,b)=>a.name.localeCompare(b.name));
+  const cards=crew.map(f=>{
+    let changes=0;
+    const rows=f.projects.filter(p=>p.stage<4).sort((a,b)=>b.stage-a.stage).map(p=>{
+      const ds=dByProj[p.id]||[]; const rv=ds.filter(d=>d.status==='review').length; const ch=ds.filter(d=>d.status==='changes').length; const ap=ds.filter(d=>d.status==='approved').length; changes+=ch; const c=CLIENTS[p.client_id]||{};
+      return `<div class="crow" onclick="nav('project','${p.id}')"><div class="crow-main"><div class="crow-t">${esc(p.title)}</div><div class="crow-s">${esc(c.name||'—')} · ${esc(STAGES[p.stage]||'')}</div></div><div class="crow-stats">${ch?`<div class="cstat due"><b>${ch}</b><span>changes</span></div>`:''}${rv?`<div class="cstat"><b>${rv}</b><span>review</span></div>`:''}<div class="cstat"><b>${ap}</b><span>done</span></div></div></div>`;
+    }).join('');
+    const active=f.projects.filter(p=>p.stage<4).length; const wa=f.contact?waLink(f.contact):'';
+    return `<div class="crewcard"><div class="crewhead"><span class="cav">${ini(f.name)}</span><div style="flex:1;min-width:0"><div class="crewname">${esc(f.name)}${changes?`<span class="ccold" style="background:#f4e0e0;color:#a15656">${changes} change${changes>1?'s':''} pending</span>`:''}</div><div class="crewsub">${active} active project${active===1?'':'s'}${f.contact?' · '+esc(f.contact):''}</div></div>${wa?`<a class="cact wa" href="${wa}" target="_blank" rel="noopener" title="WhatsApp">WA</a>`:''}</div>${rows||'<div class="muted" style="font-size:12px;padding:4px 0">No active projects right now.</div>'}</div>`;
+  }).join('');
+  $('#view').innerHTML=`
+  <div class="page-h"><div class="eyebrow">Crew · your freelancers</div><h1>Who's building what.</h1></div>
+  ${crew.length?`<div class="crewgrid">${cards}</div>`:emptyState('No freelancers yet','Open any project → Assign freelancer to start tracking who is on it.','')}`;
+}
 /* --- no-login client sharing: a per-project magic link + WhatsApp/Drive links --- */
 async function syncShare(pid){
   const p=(PROJECTS||[]).find(x=>x.id===pid); if(!p||!p.share_token) return;
