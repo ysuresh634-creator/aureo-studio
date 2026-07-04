@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aureo Studio — Live Demo</title>
+<style>
+  :root{--ink:#16181D;--cream:#f6f4ef;--win:#fffdf7;--gold:#FFCC00;--muted:#8a857c;--line:rgba(22,24,29,.12);--sec:#4a4a42;--ok:#1c7a3d;--blue:#4a7cff;--purple:#7c5cff;--warn:#e8590c;--meta:#0866ff;--g:#34a853;
+    --disp:'Chango',system-ui,sans-serif;--sh:0 1px 2px rgba(22,24,29,.05),0 6px 22px rgba(22,24,29,.06);--sh-lg:0 16px 44px rgba(22,24,29,.16)}
+  @import url('https://fonts.googleapis.com/css2?family=Chango&family=Hanken+Grotesk:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+  /* sidebar */
+  .side{background:#fbfaf6;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:9px;padding:6px 8px 14px}
+  .brand .logo{width:30px;height:30px;border-radius:50%;background:var(--gold);border:2px solid var(--ink)}
+  .brand b{font:800 19px 'Hanken Grotesk'}
+  .brand .tag{font:800 9px 'Space Mono';background:var(--ink);color:var(--cream);border-radius:6px;padding:2px 6px;margin-left:2px}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav button{display:flex;align-items:center;gap:11px;border:none;background:none;text-align:left;padding:11px 12px;border-radius:11px;font:700 13.5px 'Hanken Grotesk';color:var(--ink);cursor:pointer}
+  .nav button:hover{background:rgba(22,24,29,.05)}
+  .nav button.on{background:var(--gold)}
+  .nav svg{width:18px;height:18px;flex:none}
+  .side .foot{margin-top:auto;display:flex;align-items:center;gap:10px;background:var(--win);border:1px solid var(--line);border-radius:13px;padding:10px 12px}
+  .side .foot .av{width:34px;height:34px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font:800 13px 'Hanken Grotesk'}
+  .side .foot b{font:700 13px 'Hanken Grotesk';display:block}.side .foot span{font:11px 'Space Mono';color:var(--muted)}
+  /* main */
+  .main{padding:26px 30px 60px;max-width:1120px}
+  .demoBar{background:var(--gold);border:1.5px solid var(--ink);border-radius:12px;padding:8px 14px;font:700 12px 'Space Mono';margin-bottom:18px;display:flex;align-items:center;gap:8px}
+  .demoBar .p{width:8px;height:8px;border-radius:50%;background:var(--ink)}
+  .ey{font:800 11px 'Space Mono';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{font-family:var(--disp);font-size:34px;letter-spacing:-.5px;margin:6px 0 18px;font-weight:400}
+  .topbar{display:flex;gap:12px;margin-bottom:18px}
+  .search{flex:1;display:flex;align-items:center;gap:9px;background:var(--win);border:1px solid var(--line);border-radius:13px;padding:12px 15px;color:var(--muted);font-size:14px}
+  .btn{border:2px solid var(--ink);border-radius:11px;padding:11px 17px;font:800 13px 'Hanken Grotesk';cursor:pointer;background:var(--gold);box-shadow:0 1px 2px rgba(22,24,29,.14);white-space:nowrap}
+  .btn.ghost{background:var(--win);border-color:var(--line)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--win);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:15px 17px}
+  .kpi b{display:block;font-family:var(--disp);font-size:26px;font-weight:400;line-height:1}
+  .kpi span{font:800 10px 'Space Mono';color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:6px;display:block}
+  .kpi.dark{background:var(--ink);color:var(--cream)}.kpi.dark span{color:#b9b4a8}
+  .kpi.gold{background:var(--gold)}
+  .card{background:var(--win);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:18px;margin-bottom:14px}
+  h3{font:800 11px 'Space Mono';letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px}
+  .today .ti{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid rgba(22,24,29,.07)}
+  .today .ti:first-of-type{border-top:none}.today .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .today .ti b{font:700 13.5px 'Hanken Grotesk'}.today .ti span{font:12px 'Space Mono';color:var(--muted);margin-left:auto}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:13px;margin-bottom:14px}
+  .barrow{display:flex;align-items:flex-end;gap:12px;height:130px;padding-top:8px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%}
+  .bar .b{width:64%;border-radius:6px 6px 0 0}.bar .l{font:10px 'Space Mono';color:var(--muted)}.bar .v{font:800 10px 'Space Mono'}
+  .two{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}@media(max-width:820px){.two{grid-template-columns:1fr}.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;overflow-x:auto}}
+  /* project card */
+  .pcard{background:var(--ink);color:var(--cream);border-radius:16px;padding:15px 16px;margin-bottom:12px}
+  .pcard .pc-c{font:800 10px 'Space Mono';color:var(--gold);text-transform:uppercase;letter-spacing:.05em}
+  .pcard .pc-t{font:800 16px 'Hanken Grotesk';margin:4px 0 2px}
+  .pcard .pc-s{font:12px 'Space Mono';color:#b9b4a8}
+  .pbar{display:flex;gap:5px;margin-top:12px}.pbar i{flex:1;height:5px;border-radius:3px;background:#3a3d44}.pbar i.on{background:var(--gold)}
+  .pc-foot{display:flex;align-items:center;gap:8px;margin-top:11px}
+  .stpill{font:800 9px 'Space Mono';text-transform:uppercase;padding:4px 9px;border-radius:999px;background:var(--gold);color:var(--ink)}
+  .prio{font:800 9px 'Space Mono';text-transform:uppercase;padding:4px 9px;border-radius:999px;background:var(--warn);color:#fff;margin-left:auto}
+  /* clients */
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .ccard{background:var(--win);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:17px;display:flex;flex-direction:column;gap:13px;cursor:pointer}
+  .ccard:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(22,24,29,.10)}
+  .ctop{display:flex;align-items:center;gap:12px}
+  .cav{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffe27a,#ffcc00);border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font:800 15px 'Hanken Grotesk';flex:none}
+  .cname{font:800 15.5px 'Hanken Grotesk'}.csub{font:12px 'Space Mono';color:var(--muted);margin-top:2px}
+  .cbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font:800 10px 'Space Mono';text-transform:uppercase;padding:4px 9px;border-radius:999px}
+  .cmet{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(22,24,29,.02)}
+  .cmet div{padding:10px 6px;text-align:center;border-right:1px solid var(--line)}.cmet div:last-child{border-right:none}
+  .cmet b{display:block;font-family:var(--disp);font-size:16px;font-weight:400}.cmet span{font:800 9px 'Space Mono';color:var(--muted);text-transform:uppercase;margin-top:4px;display:block}
+  .cact{display:flex;gap:7px;flex-wrap:wrap}.ca{font:700 11px 'Space Mono';border:1.5px solid var(--line);border-radius:8px;padding:5px 10px;background:var(--cream);cursor:pointer}
+  /* pipeline */
+  .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:13px;overflow-x:auto;padding-bottom:10px}
+  .col{background:rgba(22,24,29,.035);border:1px solid var(--line);border-radius:16px;padding:11px}
+  .col-h{display:flex;justify-content:space-between;font:800 11px 'Space Mono';text-transform:uppercase;color:var(--sec);padding:2px 4px 10px}
+  .col-h .n{background:var(--ink);color:var(--cream);border-radius:999px;padding:1px 8px;font-size:10px}
+  .pmini{background:var(--win);border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:9px}
+  .pmini .c{font:800 9px 'Space Mono';color:var(--muted);text-transform:uppercase}.pmini .t{font:700 13px 'Hanken Grotesk';margin-top:3px}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:11px 8px;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}
+  th{font:800 10px 'Space Mono';text-transform:uppercase;color:var(--muted)}td.n{font-weight:700}
+  .paid{color:var(--ok);font-weight:700}.due{color:var(--warn);font-weight:700}
+  .split{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+  .split div{display:flex;align-items:center;justify-content:center;color:#fff;font:800 11px 'Space Mono'}
+  .calh{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(22,24,29,.03);border-bottom:1px solid var(--line);border-radius:16px 16px 0 0}
+  .calh span{padding:9px;font:800 10px 'Space Mono';text-transform:uppercase;color:var(--muted)}
+  .calb{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cell{min-height:92px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px}.cell:nth-child(7n){border-right:none}
+  .cell.out{background:rgba(22,24,29,.02)}.cell.out .dn{opacity:.3}.cell.today .dn{background:var(--gold);border-radius:6px;padding:0 5px}
+  .dn{font:800 11px 'Space Mono';color:var(--sec)}
+  .chip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:7px;padding:3px 6px;margin-top:4px;font:600 10.5px 'Hanken Grotesk';background:var(--win);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font:11px 'Space Mono';color:var(--muted)}.legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .badge{display:inline-flex;align-items:center;gap:6px;font:800 11px 'Space Mono';padding:4px 10px;border-radius:999px;color:#fff}
+  .sub{color:var(--muted);font-size:13px;margin:-6px 0 14px;max-width:720px;line-height:1.5}
+  /* mobile / phone preview */
+  .phonewrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:338px;flex:none;background:#0d0d0f;border-radius:46px;padding:13px;box-shadow:0 26px 64px rgba(0,0,0,.32);position:relative}
+  .phone .notch{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:24px;background:#0d0d0f;border-radius:0 0 15px 15px;z-index:3}
+  .screen{background:var(--cream);border-radius:34px;height:660px;overflow-y:auto;padding:26px 15px}
+  .m-brand{display:flex;align-items:center;gap:8px;font:800 16px 'Hanken Grotesk'}
+  .m-brand .l{width:20px;height:20px;border-radius:50%;background:var(--gold);border:2px solid var(--ink)}
+  .m-card{background:var(--win);border:2px solid var(--ink);border-radius:16px;box-shadow:3px 3px 0 var(--ink);padding:16px;margin-top:14px}
+  .phone-side{flex:1;min-width:240px;max-width:420px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo"></span><b>Aureo</b><span class="tag">DEMO</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot"><span class="av">SB</span><div><b>Studio Bloom</b><span>Agency demo</span></div></div>
+  </aside>
+  <main class="main">
+    <div class="demoBar"><span class="p"></span>LIVE PRODUCT DEMO · all data below is fictional sample data — no real client, no real numbers</div>
+    <div id="view"></div>
+  </main>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmk(n){return n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'k':'₹'+n;}
+function nf(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':String(n);}
+function ini(n){return (n||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+const ICON={dash:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 11 12 4l8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+ clients:'<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="2.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S13.9 16 14.5 19M16 6.2A3 3 0 0 1 16 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+ pipe:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="5" height="16" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="4" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="2.2"/><rect x="17" y="4" width="4" height="7" rx="1.5" stroke="currentColor" stroke-width="2.2"/></svg>',
+ cal:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4.5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="2.2"/><path d="M3 9h18M8 3v3M16 3v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+ money:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/><path d="M9 8.2h6M9 11h6M13.5 8.2c1.2 0 1.2 3.4-1.7 3.4H9.5l4 4.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ ads:'<svg viewBox="0 0 24 24" fill="none"><path d="M3 11v2a1 1 0 0 0 1 1h3l4 4V6L7 10H4a1 1 0 0 0-1 1Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M16 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'};
+
+/* ---------- FAKE DATA ---------- */
+const CLIENTS=[
+ {name:'Studio Bloom',city:'Bangalore',type:'Pilates & Barre',proj:3,rev:186000,due:0,st:['#1c7a3d','Active']},
+ {name:'Iron & Oak',city:'Mumbai',type:'Strength studio',proj:2,rev:142000,due:38000,st:['#1c7a3d','Active']},
+ {name:'Serene Flow Yoga',city:'Pune',type:'Yoga',proj:2,rev:98000,due:0,st:['#1c7a3d','Active']},
+ {name:'Peak Reformer',city:'Hyderabad',type:'Reformer Pilates',proj:1,rev:54000,due:22000,st:['#e8590c','Needs nudge']},
+ {name:'Cadence Cycling',city:'Delhi',type:'Indoor cycling',proj:0,rev:0,due:0,st:['#8a857c','Prospect']},
+ {name:'Barre & Beyond',city:'Chennai',type:'Barre',proj:2,rev:120000,due:0,st:['#1c7a3d','Active']},
+ {name:'Zen Den Wellness',city:'Goa',type:'Wellness',proj:0,rev:0,due:0,st:['#8a857c','Prospect']},
+ {name:'Momentum CrossFit',city:'Bangalore',type:'CrossFit',proj:2,rev:88000,due:25000,st:['#1c7a3d','Active']}
+];
+const STAGES=['Brief','Production','The Gate','Client Review','Shipped'];
+const PROJECTS=[
+ {client:'Studio Bloom',title:'July Reels Engine',type:'8 reels · monthly',stage:3,prio:'high',prog:72},
+ {client:'Iron & Oak',title:'Brand relaunch films',type:'3 hero videos',stage:1,prio:'high',prog:34},
+ {client:'Serene Flow Yoga',title:'Retreat promo',type:'Campaign',stage:2,prio:'normal',prog:52},
+ {client:'Peak Reformer',title:'Membership drive',type:'Ad creatives',stage:0,prio:'normal',prog:8},
+ {client:'Barre & Beyond',title:'Summer campaign',type:'12 posts',stage:4,prio:'normal',prog:100},
+ {client:'Momentum CrossFit',title:'Community challenge',type:'UGC series',stage:1,prio:'normal',prog:40}
+];
+const INV=[
+ {client:'Studio Bloom',desc:'July retainer',amt:60000,status:'paid'},
+ {client:'Iron & Oak',desc:'Relaunch — 50%',amt:38000,status:'due'},
+ {client:'Serene Flow Yoga',desc:'Retreat promo',amt:45000,status:'paid'},
+ {client:'Peak Reformer',desc:'Membership ads',amt:22000,status:'due'},
+ {client:'Barre & Beyond',desc:'Summer campaign',amt:52000,status:'paid'},
+ {client:'Momentum CrossFit',desc:'UGC series',amt:25000,status:'due'}
+];
+const STC={Idea:'#8a857c',Drafting:'#4a7cff',Review:'#e8590c',Scheduled:'#7c5cff',Posted:'#1c7a3d'};
+const POSTS=[
+ {d:'2026-07-02',p:'Story',t:'BTS reformer setup',s:'Posted'},{d:'2026-06-30',p:'Reel',t:'12-week transformation',s:'Posted'},
+ {d:'2026-06-27',p:'Carousel',t:'5 posture fixes',s:'Posted'},{d:'2026-07-06',p:'Reel',t:'Monday reset',s:'Review'},
+ {d:'2026-07-09',p:'Carousel',t:'Beginner vs advanced',s:'Review'},{d:'2026-07-11',p:'Reel',t:'Meet the instructor',s:'Scheduled'},
+ {d:'2026-07-14',p:'Story',t:'Class-time poll',s:'Scheduled'},{d:'2026-07-17',p:'Reel',t:'Myth-busting',s:'Idea'},
+ {d:'2026-07-21',p:'Carousel',t:'Member spotlight',s:'Idea'},{d:'2026-07-25',p:'Reel',t:'3 bedtime stretches',s:'Idea'}
+];
+const META=[{n:'Trial Lead-Gen',spend:42300,reach:128400,ctr:2.0,res:'214 leads',cpr:'₹198'},{n:'Reels Boost',spend:18900,reach:96300,ctr:1.48,res:'41k views',cpr:'₹0.46'},{n:'Retargeting',spend:15600,reach:22100,ctr:2.19,res:'38 memberships',cpr:'₹410'}];
+const GADS=[{n:'Search — pilates',cost:31200,clicks:2140,conv:96,cpa:'₹325'},{n:'Performance Max',cost:22400,clicks:3010,conv:71,cpa:'₹315'},{n:'YouTube — Brand',cost:9800,clicks:640,conv:12,cpa:'₹817'}];
+
+/* ---------- helpers ---------- */
+function bars(items){const max=Math.max(1,...items.map(i=>i.v));return items.map(i=>`<div class="bar"><div class="v">${i.disp||i.v}</div><div class="b" style="height:${Math.round(i.v/max*100)}%;background:${i.c}"></div><div class="l">${i.l}</div></div>`).join('');}
+function kpi(v,l,cls){return `<div class="kpi ${cls||''}"><b>${v}</b><span>${l}</span></div>`;}
+
+/* ---------- VIEWS ---------- */
+function vDash(){
+  const revenue=INV.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amt,0);
+  const due=INV.filter(i=>i.status!=='paid').reduce((s,i)=>s+i.amt,0);
+  return `<div class="ey">The studio floor</div><h1>Good evening, Yedukrishna.</h1>
+  <div class="topbar"><div class="search">🔍 Search projects & clients…</div><button class="btn">+ New project</button></div>
+  <div class="kpis">${kpi(CLIENTS.length,'Clients','gold')}${kpi(PROJECTS.filter(p=>p.stage<4).length,'Active')}${kpi(POSTS.filter(p=>p.s!=='Posted').length,'Posts queued')}${kpi('3.1x','Blended ROAS','dark')}${kpi(fmk(revenue),'Collected')}${kpi(fmk(due),'Outstanding','dark')}</div>
+  <div class="card today"><h3 style="margin:0 0 8px">Today · what needs you</h3>
+    <div class="ti"><span class="dot" style="background:var(--warn)"></span><b>2 deliverables awaiting client review</b><span>nudge if stale</span></div>
+    <div class="ti"><span class="dot" style="background:var(--blue)"></span><b>1 project at the Gate</b><span>QC before it ships</span></div>
+    <div class="ti"><span class="dot" style="background:var(--ok)"></span><b>4 verified leads ready to contact</b><span>early stage</span></div>
+  </div>
+  <div class="charts">
+    <div class="card"><div class="ey" style="margin-bottom:6px">Pipeline funnel</div><div class="barrow">${bars(STAGES.map((s,i)=>({l:s.split(' ')[0],v:PROJECTS.filter(p=>p.stage===i).length,c:'#16181D'})))}</div></div>
+    <div class="card"><div class="ey" style="margin-bottom:6px">Cash in · last 6 mo</div><div class="barrow">${bars([['Feb',180],['Mar',210],['Apr',240],['May',260],['Jun',300],['Jul',320]].map(x=>({l:x[0],v:x[1],disp:'₹'+x[1]+'k',c:'#1c7a3d'})))}</div></div>
+    <div class="card"><div class="ey" style="margin-bottom:6px">Content by stage</div><div class="barrow">${bars(Object.keys(STC).map(s=>({l:s.slice(0,4),v:POSTS.filter(p=>p.s===s).length,c:STC[s]})))}</div></div>
+  </div>
+  <div class="two"><div><h3>Active work</h3>${PROJECTS.slice(0,4).map(projCard).join('')}</div>
+    <div><h3>Activity</h3><div class="card" style="padding:14px">${['July Reels Engine → moved to Client Review','Retreat promo → 2 assets uploaded','Brand relaunch → new brief added','Summer campaign → shipped 🟡'].map(a=>`<div style="padding:9px 0;border-top:1px solid rgba(22,24,29,.07);font:13px \'Hanken Grotesk\'">${a}</div>`).join('')}</div></div></div>`;
+}
+function projCard(p){const c=CLIENTS.find(x=>x.name===p.client)||{};return `<div class="pcard"><div class="pc-c">${esc(p.client)}</div><div class="pc-t">${esc(p.title)}</div><div class="pc-s">${esc(p.type)}</div><div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div><div class="pc-foot"><span class="stpill">${STAGES[p.stage]}</span>${p.prio==='high'?'<span class="prio">High</span>':''}<span style="margin-left:auto;font:800 12px \'Space Mono\';color:var(--gold)">${p.prog}%</span></div></div>`;}
+function vClients(){
+  return `<div class="ey">Clients · ${CLIENTS.length} total</div><h1>Your roster.</h1>
+  <div class="topbar"><div class="search">🔍 Search clients, contacts, city…</div><button class="btn">+ New client</button></div>
+  <div class="cgrid">${CLIENTS.map(c=>`<div class="ccard">
+    <div class="ctop"><span class="cav">${ini(c.name)}</span><div style="flex:1;min-width:0"><div class="cname">${esc(c.name)}</div><div class="csub">${esc(c.type)} · ${esc(c.city)}</div></div><span class="cbadge" style="color:${c.st[0]};background:${c.st[0]}14"><span class="dot" style="background:${c.st[0]}"></span>${c.st[1]}</span></div>
+    <div class="cmet"><div><b>${c.proj}</b><span>Projects</span></div><div><b>${c.rev?fmk(c.rev):'—'}</b><span>Collected</span></div><div><b>${c.due?fmk(c.due):'—'}</b><span>Due</span></div></div>
+    <div class="cact"><span class="ca">WhatsApp</span><span class="ca">Call</span><span class="ca">Email</span><span class="ca" style="margin-left:auto;border:none;background:none">Open →</span></div>
+  </div>`).join('')}</div>`;
+}
+function vPipeline(){
+  return `<div class="ey">Pipeline</div><h1>Every project, every stage.</h1><div class="sub">Drag-and-drop in the real app — each move updates the client's live progress page instantly.</div>
+  <div class="board">${STAGES.map((s,i)=>`<div class="col"><div class="col-h"><span>${s}</span><span class="n">${PROJECTS.filter(p=>p.stage===i).length}</span></div>${PROJECTS.filter(p=>p.stage===i).map(p=>`<div class="pmini"><div class="c">${esc(p.client)}</div><div class="t">${esc(p.title)}</div></div>`).join('')||'<div style="font:11px \'Space Mono\';color:var(--muted);text-align:center;padding:10px;opacity:.5">—</div>'}</div>`).join('')}</div>`;
+}
+function vCal(){
+  const M=6,Y=2026,TODAY='2026-07-04';const first=new Date(Y,M,1);const lead=(first.getDay()+6)%7;const start=new Date(Y,M,1-lead);
+  const days=new Date(Y,M+1,0).getDate();const weeks=Math.ceil((lead+days)/7);const byDay={};POSTS.forEach(p=>{(byDay[p.d]=byDay[p.d]||[]).push(p);});
+  let cells='';for(let i=0;i<weeks*7;i++){const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');const out=d.getMonth()!==M;cells+=`<div class="cell${out?' out':''}${k===TODAY?' today':''}"><span class="dn">${d.getDate()}</span>${(byDay[k]||[]).map(p=>`<div class="chip"><span class="dot" style="background:${STC[p.s]}"></span>${esc(p.t).slice(0,14)}</div>`).join('')}</div>`;}
+  const dow=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  return `<div class="ey">Content calendar · July 2026</div><h1>What's going out, and when.</h1><div class="sub">The client sees this exact calendar (no login) and approves each post before it's published.</div>
+  <div class="card" style="padding:0;overflow:hidden"><div class="calh">${dow.map(x=>`<span>${x}</span>`).join('')}</div><div class="calb">${cells}</div></div>
+  <div class="legend">${Object.keys(STC).map(s=>`<span><span class="dot" style="background:${STC[s]}"></span>${s}</span>`).join('')}</div>`;
+}
+function vMoney(){
+  const paid=INV.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amt,0);const due=INV.filter(i=>i.status!=='paid').reduce((s,i)=>s+i.amt,0);
+  return `<div class="ey">Money</div><h1>The full picture.</h1>
+  <div class="kpis">${kpi(fmk(paid+240000),'Total balance','dark')}${kpi(fmk(paid),'Collected','gold')}${kpi(fmk(due),'Outstanding')}${kpi('₹1.2L','Safe to spend','dark')}</div>
+  <h3>Invoices</h3><div class="card" style="padding:6px 16px"><table>
+    <tr><th>Client</th><th>Description</th><th>Amount</th><th>Status</th></tr>
+    ${INV.map(i=>`<tr><td class="n">${esc(i.client)}</td><td style="text-align:left;color:var(--muted)">${esc(i.desc)}</td><td>${fmk(i.amt)}</td><td class="${i.status==='paid'?'paid':'due'}">${i.status==='paid'?'✓ Paid':'Due'}</td></tr>`).join('')}
+  </table></div>`;
+}
+function vAds(){
+  const mSpend=META.reduce((s,c)=>s+c.spend,0);const gCost=GADS.reduce((s,c)=>s+c.cost,0);const total=mSpend+gCost;const mp=Math.round(mSpend/total*100);
+  return `<div class="ey">Ad performance</div><h1>Meta + Google, in one place.</h1><div class="sub">Pulled straight from the connected ad accounts in the live app. “ROAS” = revenue per ₹1 spent.</div>
+  <div class="kpis">${kpi(fmk(total),'Ad spend','gold')}${kpi('393','Leads + conv.')}${kpi('3.1x','Blended ROAS','dark')}${kpi('₹357','Cost per lead')}</div>
+  <div class="card"><div class="ey" style="margin-bottom:8px">Where the budget went</div><div class="split"><div style="width:${mp}%;background:var(--meta)">Meta ${mp}%</div><div style="width:${100-mp}%;background:var(--g)">Google ${100-mp}%</div></div></div>
+  <h3><span class="badge" style="background:var(--meta)">Meta Ads</span></h3><div class="card" style="padding:6px 16px"><table>
+    <tr><th>Campaign</th><th>Spend</th><th>Reach</th><th>CTR</th><th>Results</th><th>Cost/result</th></tr>
+    ${META.map(c=>`<tr><td class="n">${esc(c.n)}</td><td>${fmk(c.spend)}</td><td>${nf(c.reach)}</td><td>${c.ctr}%</td><td>${c.res}</td><td>${c.cpr}</td></tr>`).join('')}
+  </table></div>
+  <h3><span class="badge" style="background:var(--g)">Google Ads</span></h3><div class="card" style="padding:6px 16px"><table>
+    <tr><th>Campaign</th><th>Cost</th><th>Clicks</th><th>Conversions</th><th>Cost/conv.</th></tr>
+    ${GADS.map(c=>`<tr><td class="n">${esc(c.n)}</td><td>${fmk(c.cost)}</td><td>${nf(c.clicks)}</td><td>${c.conv}</td><td>${c.cpa}</td></tr>`).join('')}
+  </table></div>`;
+}
+let MFB={};
+function prettyd(d){const x=new Date(d+'T00:00:00');return x.toLocaleDateString('en',{day:'numeric',month:'short'});}
+function vMobile(){
+  const posted=POSTS.filter(p=>p.s==='Posted');const up=POSTS.filter(p=>p.s!=='Posted');
+  const reviewed=POSTS.filter(p=>MFB[p.t]);const app=reviewed.filter(p=>MFB[p.t]==='approved');
+  const rate=reviewed.length?Math.round(app.length/reviewed.length*100):0;
+  const ins=(n,l)=>`<div style="flex:1;text-align:center;background:var(--cream);border:1.5px solid var(--line);border-radius:11px;padding:8px 3px"><div style="font:800 18px 'Hanken Grotesk'">${n}</div><div style="font:800 8px 'Space Mono';color:var(--muted);text-transform:uppercase;margin-top:2px">${l}</div></div>`;
+  const pc=(p,allow)=>{const fb=MFB[p.t];let panel='';
+    if(fb)panel=`<div style="margin-top:8px;font:700 12px 'Hanken Grotesk';padding:8px 10px;border-radius:9px;background:${fb==='approved'?'#e2f6e8':'#fff3d4'};color:${fb==='approved'?'var(--ok)':'#8a6300'}">${fb==='approved'?'✓ You approved this':'↺ You asked for a change'}</div>`;
+    else if(allow)panel=`<div style="display:flex;gap:7px;margin-top:9px"><button onclick="mFb('${esc(p.t)}','approved')" style="flex:1;border:2px solid var(--ink);background:var(--gold);border-radius:9px;padding:8px;font:800 12px 'Hanken Grotesk';cursor:pointer">✓ Approve</button><button onclick="mFb('${esc(p.t)}','changes')" style="flex:1;border:2px solid var(--ink);background:var(--win);border-radius:9px;padding:8px;font:800 12px 'Hanken Grotesk';cursor:pointer">✏️ Tweak</button></div>`;
+    return `<div style="border:1.5px solid var(--line);border-radius:12px;padding:11px;margin-bottom:9px"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1;font:700 13px 'Hanken Grotesk';min-width:0">${esc(p.t)}</b><span style="font:800 8px 'Space Mono';text-transform:uppercase;padding:2px 7px;border-radius:999px;background:${STC[p.s]}22;color:${STC[p.s]};white-space:nowrap">${p.s}</span></div><div style="font:11px 'Space Mono';color:var(--muted);margin-top:3px">${p.p} · ${prettyd(p.d)}</div>${panel}</div>`;};
+  return `<div class="ey">The client's phone</div><h1>What your client sees.</h1><div class="sub">No app to download, no login — you send one link, they open this on their phone. They watch every post, approve it, and see how past posts performed. This is the transparency that closes the deal.</div>
+  <div class="phonewrap">
+   <div class="phone"><div class="notch"></div><div class="screen">
+     <div class="m-brand"><span class="l"></span>Aureo</div>
+     <div class="m-card"><div style="font:800 20px 'Hanken Grotesk'">July Reels Engine</div><div style="font:11px 'Space Mono';color:var(--muted);text-transform:uppercase;margin-top:3px">Studio Bloom · Live progress</div>
+       <div style="display:flex;gap:5px;margin-top:15px">${STAGES.map((s,i)=>`<div style="flex:1;text-align:center"><div style="width:25px;height:25px;margin:0 auto 5px;border-radius:50%;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font:800 10px 'Hanken Grotesk';background:${i<3?'var(--ink)':i===3?'var(--gold)':'var(--win)'};color:${i<3?'var(--gold)':'var(--ink)'}">${i<3?'✓':i+1}</div><div style="font:700 7.5px 'Space Mono';color:${i<=3?'var(--ink)':'var(--muted)'}">${s.split(' ').pop()}</div></div>`).join('')}</div>
+     </div>
+     <div class="m-card"><div style="display:flex;align-items:center;justify-content:space-between"><div style="font:800 17px 'Hanken Grotesk'">Content calendar</div><span style="font:800 9px 'Space Mono';color:var(--ok);text-transform:uppercase">● Live</span></div>
+       <div style="display:flex;gap:6px;margin:14px 0 4px">${ins(POSTS.length,'Planned')}${ins(posted.length,'Posted')}${ins(up.length,'Soon')}${ins(rate+'%','Approved')}</div>
+       <div style="font:800 10px 'Space Mono';color:var(--muted);text-transform:uppercase;margin:16px 0 8px">Coming up — approve</div>
+       ${up.map(p=>pc(p,p.s==='Review'||p.s==='Scheduled')).join('')}
+       <div style="font:800 10px 'Space Mono';color:var(--muted);text-transform:uppercase;margin:16px 0 8px">Already posted</div>
+       ${posted.map(p=>pc(p,false)).join('')}
+     </div>
+   </div></div>
+   <div class="phone-side"><h3>Why this closes clients</h3>
+     <div class="card"><div style="font:14px/1.8 'Hanken Grotesk'">• <b>Zero friction</b> — one link, opens on any phone, no login or app.<br>• <b>They're in control</b> — approve or request a change on every post.<br>• <b>Proof it works</b> — reach, likes & saves on everything posted.<br>• <b>Trust by default</b> — nothing ships behind their back.</div></div>
+     <div class="card" style="background:var(--gold)"><div style="font:800 11px 'Space Mono';text-transform:uppercase">Try it 👉</div><div style="font:14px 'Hanken Grotesk';margin-top:6px">Tap <b>Approve</b> or <b>Tweak</b> on a post in the phone — it updates instantly, exactly like on the client's screen.</div></div>
+   </div>
+  </div>`;
+}
+window.mFb=function(t,a){MFB[t]=a;$('#view').innerHTML=vMobile();window.scrollTo(0,0);};
+const IPHONE='<svg viewBox="0 0 24 24" fill="none"><rect x="7" y="2.5" width="10" height="19" rx="2.6" stroke="currentColor" stroke-width="2.2"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const VIEWS={dash:['Dashboard',ICON.dash,vDash],clients:['Clients',ICON.clients,vClients],pipe:['Pipeline',ICON.pipe,vPipeline],cal:['Calendar',ICON.cal,vCal],money:['Money',ICON.money,vMoney],ads:['Ads',ICON.ads,vAds],mobile:['Client View',IPHONE,vMobile]};
+function nav(k){ $('#view').innerHTML=VIEWS[k][2](); document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.k===k)); window.scrollTo(0,0); }
+$('#nav').innerHTML=Object.keys(VIEWS).map(k=>`<button data-k="${k}" onclick="nav('${k}')">${VIEWS[k][1]}${VIEWS[k][0]}</button>`).join('');
+nav('dash');
+</script>
+</body>
+</html>

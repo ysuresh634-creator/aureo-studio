@@ -2053,5 +2053,45 @@ window.setCSort=function(k){ CSORT=k; const b=$('#cliBody'); if(b) b.innerHTML=c
 window.filterClients=function(){ const b=$('#cliBody'); if(b) b.innerHTML=clientsBody2(); };
 </script>
 
+<style>
+/* ===== AUREO_RESPONSIVE — smooth UX on every device ===== */
+@media(max-width:820px){
+  /* bottom nav has more items now — let it scroll instead of cramming */
+  .mobnav{overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch}
+  .mobnav::-webkit-scrollbar{display:none}
+  .mobnav button{flex:0 0 auto;min-width:62px}
+  /* keep floating demo pill above the bottom nav */
+  #demoToggle{bottom:calc(70px + env(safe-area-inset-bottom))}
+}
+@media(max-width:680px){
+  h1{font-size:25px!important;letter-spacing:-.3px}
+  .topbar{flex-wrap:wrap}
+  .topbar .search{min-width:0}
+  .dash-h{flex-direction:column;align-items:flex-start;gap:10px}
+  .dash-tools{width:100%;flex-wrap:wrap}
+  /* month calendars: swipe horizontally instead of squishing 7 columns */
+  .calgrid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .calhead,.calbody{min-width:580px}
+  /* kanban: one column per swipe */
+  .lboard{grid-auto-columns:82vw}
+  /* stack card grids to a single clean column */
+  .cl2-grid{grid-template-columns:1fr}
+  .lkpis,.kstrip,.charts,.cli-sum{gap:9px}
+  /* leads list view rows breathe */
+  .lrow{flex-wrap:wrap}
+  /* modals fill the screen comfortably */
+  .modal{width:100%!important}
+}
+@media(max-width:420px){
+  .kpi2 .kv,.lkpi b{font-size:21px}
+  .cl2-metrics b,.cmet b{font-size:14px}
+  .lchip,.jchip,.cl2-chip{font-size:10px;padding:4px 9px}
+}
+/* larger tap targets on touch devices everywhere */
+@media(pointer:coarse){
+  .lcact,.cl2-a,.cact,.chip,.jchip,.lchip{min-height:34px;display:inline-flex;align-items:center}
+  .nav-i,.btn{min-height:44px}
+}
+</style>
 </body>
 </html>
