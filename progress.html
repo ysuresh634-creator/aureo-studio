@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project progress · Aureo</title>
+<style>
+  :root{--ink:#16181D;--cream:#f4f1ea;--gold:#FFCC00;--win:#fffdf7;--muted:#8a857c;--line:#e6e1d6;--ok:#1c7a3d;--blue:#1746c4}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'Hanken Grotesk',-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:640px;margin:0 auto;padding:26px 18px 60px}
+  .brand{font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:22px;height:22px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:inline-block}
+  .card{background:var(--win);border:2px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:22px;margin-top:20px}
+  .ttl{font-size:24px;font-weight:800;line-height:1.15}
+  .sub{font-size:13px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .steps{display:flex;flex-direction:column;gap:0;margin-top:24px}
+  .step{display:flex;align-items:flex-start;gap:14px;position:relative;padding-bottom:20px}
+  .step:not(:last-child):before{content:"";position:absolute;left:15px;top:32px;bottom:0;width:2px;background:var(--line)}
+  .step.done:not(:last-child):before,.step.cur:not(:last-child):before{background:var(--ink)}
+  .step .dot{width:32px;height:32px;border-radius:50%;border:2.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:var(--win);flex:none;z-index:1}
+  .step.done .dot{background:var(--ink);color:var(--gold)}
+  .step.cur .dot{background:var(--gold)}
+  .step .lb{font-weight:700;font-size:15px;padding-top:5px}
+  .step.cur .lb{color:var(--ink)}
+  .step:not(.done):not(.cur) .lb{color:var(--muted)}
+  .gate .dot{border-color:var(--ink)}
+  h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:26px 0 10px}
+  .del{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:14px}
+  .del b{flex:1;font-weight:600}
+  .st{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .st-approved{background:#e2f6e8;color:var(--ok)} .st-review{background:#fff3d4;color:#8a6300}
+  .st-draft,.st-gate{background:#eef1f6;color:#55607a} .st-changes{background:#f4e9e9;color:#a15656}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .btn{border:2px solid var(--ink);border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
+  .btn.ghost{background:var(--win)}
+  .btn:active{transform:translate(2px,2px);box-shadow:none}
+  .note{font-size:13px;color:var(--muted);margin-top:22px;line-height:1.6;text-align:center}
+  .msg{text-align:center;padding:60px 20px;color:var(--muted)}
+  .banner{background:var(--gold);border:2px solid var(--ink);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px;margin-top:16px}
+</style>
+</head>
+<body>
+<div id="app"><div class="msg">Loading your project…</div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({apiKey:"AIzaSyCoZeSI-3RsX3tJdCc6jiQLU3AeZU_qgY4",authDomain:"aureo-studio-5aa35.firebaseapp.com",projectId:"aureo-studio-5aa35",storageBucket:"aureo-studio-5aa35.firebasestorage.app",messagingSenderId:"523812913751",appId:"1:523812913751:web:5f788617a5c2c0939c9912"});
+const db=firebase.firestore();
+const TOK=new URLSearchParams(location.search).get('s');
+const STAGES=['Brief','Production','The Gate','Client Review','Shipped'];
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const app=document.getElementById('app');
+function msg(t){ app.innerHTML='<div class="msg">'+esc(t)+'</div>'; }
+async function load(){
+  if(!TOK){ msg('This link is invalid.'); return; }
+  let s;
+  try{ const d=await db.collection('shares').doc(TOK).get(); if(!d.exists){ msg('This link is no longer active.'); return; } s=d.data(); }
+  catch(e){ msg('Could not load — please try again in a moment.'); return; }
+  render(s);
+}
+function render(s){
+  const stage=s.stage||0;
+  const steps=STAGES.map((st,i)=>`<div class="step ${i<stage?'done':i===stage?'cur':''} ${st==='The Gate'?'gate':''}"><div class="dot">${i<stage?'✓':i+1}</div><div class="lb">${esc(st)}</div></div>`).join('');
+  const dels=(s.deliverables||[]).length ? s.deliverables.map(d=>`<div class="del"><span>${esc(d.emoji||'📄')}</span> <b>${esc(d.title||'Deliverable')}</b> <span class="st st-${esc(d.status||'draft')}">${esc(d.status||'draft')}</span></div>`).join('') : '<div class="note" style="text-align:left">Deliverables will appear here as work progresses.</div>';
+  const acted = s.client_action && s.client_action.action;
+  let actions='';
+  if(stage===3 && !acted){ actions=`<div class="actions"><button class="btn" onclick="act('approved')">✓ Approve</button><button class="btn ghost" onclick="act('changes')">✏️ Request changes</button></div>`; }
+  else if(acted){ actions=`<div class="banner">${s.client_action.action==='approved'?'✓ You approved this — thank you!':'✏️ Change request sent. The team is on it.'}</div>`; }
+  app.innerHTML=`<div class="wrap">
+    <div class="brand"><span class="dot"></span>Aureo</div>
+    <div class="card">
+      <div class="ttl">${esc(s.title||'Your project')}</div>
+      <div class="sub">${esc(s.client||'')}${s.type?' · '+esc(s.type):''} · Live progress</div>
+      <div class="steps">${steps}</div>
+      <h3>What we're delivering</h3>${dels}
+      ${actions}
+    </div>
+    <div class="note">You're seeing live progress — no login needed. Questions? Just reply on WhatsApp. 🟡</div>
+  </div>`;
+}
+window.act=async function(action){
+  try{ await db.collection('shares').doc(TOK).update({client_action:{action:action,at:new Date().toISOString()}}); }catch(e){}
+  load();
+};
+load();
+</script>
+</body>
+</html>

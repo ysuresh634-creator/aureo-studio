@@ -763,8 +763,7 @@ async function vClientDetail(id){
      <div style="font-size:13px;line-height:2"><b>Contact</b><br>${esc(c.contact||'—')}<br><br><b>Email</b><br>${cEmail(c)?`<a href="mailto:${esc(cEmail(c))}" style="color:var(--blue)">${esc(cEmail(c))}</a>`:'—'}<br><br><b>Phone</b><br>${c.phone?esc(c.phone):'—'}<br><br><b>City</b><br>${esc(c.city||'—')}<br><br><b>Website</b><br>${c.website?`<a href="${esc(c.website)}" target="_blank" style="color:var(--blue)">${esc(c.website)}</a>`:'—'}<br><br><b>Last contacted</b><br>${c.last_contacted?fmtd(c.last_contacted)+(daysSince(c.last_contacted)!=null?' · '+daysSince(c.last_contacted)+'d ago':''):'<span class="muted">never logged</span>'}<br><br><b>Notes</b><br><span class="muted">${esc(c.notes||'—')}</span></div>
      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px">${waLink(c.phone)?`<a class="cact wa" href="${waLink(c.phone)}" target="_blank" rel="noopener">WA WhatsApp</a>`:''}${c.phone?`<a class="cact" href="tel:${esc(c.phone)}">☎ Call</a>`:''}${cEmail(c)?`<a class="cact" href="mailto:${esc(cEmail(c))}">✉ Email</a>`:''}<button class="cact" onclick="doLogContact('${c.id}')">✓ Log contact</button></div>
      <button class="btn ghost sm wide" style="margin-top:12px" onclick="editClient('${c.id}')">Edit client</button>
-     <button class="btn sm wide" style="margin-top:8px" onclick="newProject('${c.id}')">+ New project for ${esc(c.name)}</button>
-     <button class="btn ghost sm wide" style="margin-top:8px" onclick="inviteClient('${c.id}')">👤 Give ${esc(c.name)} portal access</button>`)}</div>
+     <button class="btn sm wide" style="margin-top:8px" onclick="newProject('${c.id}')">+ New project for ${esc(c.name)}</button>`)}</div>
   </div>`;
 }
 
@@ -1142,6 +1141,25 @@ async function assignFreelancer(pid){
   modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">The client never sees this — uploaded work just appears as Aureo's.</div><label>Existing freelancer</label><select id="afS"><option value="">— none —</option>${opts}</select><div class="tiny muted" style="margin:14px 0 6px;font-weight:700;border-top:1.5px dashed rgba(0,0,0,.15);padding-top:12px">— or add a new one —</div><div class="two"><div><label>Name</label><input id="afN" placeholder="Ravi (editor)"></div><div><label>Email</label><input id="afE" type="email" placeholder="ravi@gmail.com"></div></div><button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Assign</button>`);
 }
 async function doAssignFreelancer(pid){ const existing=$('#afS').value||null; const nm=($('#afN')&&$('#afN').value.trim())||''; const em=($('#afE')&&$('#afE').value.trim())||''; let fid=existing, created=false; if(!fid&&em){ toast('Creating freelancer login…'); fid=await createLogin(em,{role:'freelancer',name:nm||'Freelancer'}); if(!fid) return; created=true; } const {error}=await sb.from('projects').update({freelancer_id:fid}).eq('id',pid); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast(fid?('✓ Freelancer assigned'+(created?' — set-password email sent':'')):'Assignment cleared'); render(); }
+/* --- no-login client sharing: a per-project magic link + WhatsApp/Drive links --- */
+async function syncShare(pid){
+  const p=(PROJECTS||[]).find(x=>x.id===pid); if(!p||!p.share_token) return;
+  let items=[]; try{ const r=await sb.from('deliverables').select('*').eq('project_id',pid).order('created_at'); items=r.data||[]; }catch(e){}
+  const c=CLIENTS[p.client_id]||{};
+  const snap={ project_id:pid, title:p.title||'', client:c.name||'', type:p.type||'', stage:p.stage||0, updated_at:nowISO(), deliverables:items.map(it=>({title:it.title||'',emoji:it.emoji||'📄',status:it.status||'draft'})) };
+  try{ await fdb.collection('shares').doc(p.share_token).set(snap,{merge:true}); }catch(e){}
+}
+async function shareProject(pid){
+  let p=(PROJECTS||[]).find(x=>x.id===pid); if(!p){ const r=await sb.from('projects').select('*').eq('id',pid).maybeSingle(); p=r.data; }
+  if(!p){ toast('Project not found'); return; }
+  if(!p.share_token){ const tok='s'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2,8); const {error}=await sb.from('projects').update({share_token:tok}).eq('id',pid); if(error){toast(error.message);return;} p.share_token=tok; const cp=(PROJECTS||[]).find(x=>x.id===pid); if(cp) cp.share_token=tok; }
+  await syncShare(pid);
+  const url=location.origin+'/progress.html?s='+p.share_token; const c=CLIENTS[p.client_id]||{}; const em=cEmail(c);
+  const waTxt=encodeURIComponent('Hi '+(c.name||'')+' — here is the live progress of "'+(p.title||'')+'": '+url);
+  modal('Client progress link',`<div class="tiny muted" style="margin-bottom:8px">Anyone with this link sees live progress + can approve — <b>no login, no password, no account</b>.</div><input value="${esc(url)}" readonly onclick="this.select()" style="font-size:12px"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" onclick="navigator.clipboard.writeText('${esc(url)}').then(()=>toast('Link copied'))">Copy link</button><a class="btn ghost sm" href="https://wa.me/?text=${waTxt}" target="_blank" rel="noopener" style="text-decoration:none">Share on WhatsApp</a>${em?`<a class="btn ghost sm" href="mailto:${esc(em)}?subject=${encodeURIComponent('Your project progress')}&body=${waTxt}" style="text-decoration:none">Email it</a>`:''}</div>`);
+}
+function projLinks(pid){ const p=(PROJECTS||[]).find(x=>x.id===pid)||{}; modal('Project links',`<div class="tiny muted" style="margin-bottom:8px">The WhatsApp group + Drive folder your editors/freelancers work in — no logins needed.</div><label>WhatsApp group invite link</label><input id="plW" value="${esc(p.whatsapp_url||'')}" placeholder="https://chat.whatsapp.com/..."><label>Google Drive folder link</label><input id="plG" value="${esc(p.gdrive_url||'')}" placeholder="https://drive.google.com/drive/folders/..."><button class="btn wide" style="margin-top:14px" onclick="doProjLinks('${pid}')">Save</button>`); }
+async function doProjLinks(pid){ const patch={whatsapp_url:$('#plW').value.trim()||null,gdrive_url:$('#plG').value.trim()||null}; const {error}=await sb.from('projects').update(patch).eq('id',pid); if(error){toast(error.message);return;} const p=(PROJECTS||[]).find(x=>x.id===pid); if(p)Object.assign(p,patch); closeModal(); toast('Links saved'); render(); }
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
@@ -1165,6 +1183,7 @@ async function vProject(id){
       ${winWrap('DELIVERABLES', (items&&items.length?items.map(it=>itemRow(p,it,team)).join(''):'<div class="muted" style="font-size:13px">No deliverables yet.</div>') + (team?`<button class="btn ghost sm wide" style="margin-top:12px" onclick="addItem('${p.id}')">+ Add deliverable</button>`:''))}
       ${winWrap('FILES', ((files&&files.length)?files.map(f=>`<div class="filerow">📎 <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>${team?`<button class="iconbtn" style="width:28px;height:28px" onclick="delFile('${f.id}','${p.id}')">×</button>`:''}</div>`).join(''):'<div class="muted" style="font-size:13px">No files shared yet.</div>') + (team?`<button class="btn ghost sm wide" style="margin-top:12px" onclick="addFile('${p.id}')">+ Add file / link</button>`:''))}
       ${team?winWrap('CHECKLIST (internal)', (tasks.length?tasks.map(t=>`<div class="check ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked,'${p.id}')"><label>${esc(t.title)}</label><button class="iconbtn" style="width:26px;height:26px" onclick="delTask('${t.id}','${p.id}')">×</button></div>`).join(''):'<div class="muted" style="font-size:13px">No tasks yet.</div>')+`<div style="display:flex;gap:8px;margin-top:12px"><input id="newTask" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTask('${p.id}')"><button class="btn sm" onclick="addTask('${p.id}')">Add</button></div>`):''}
+      ${team?winWrap('CLIENT & LINKS',`<div style="display:flex;flex-direction:column;gap:8px"><button class="btn sm wide" onclick="shareProject('${p.id}')">🔗 Client progress link — no login</button>${p.whatsapp_url?`<a class="btn ghost sm wide" href="${esc(p.whatsapp_url)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">📱 Open WhatsApp group</a>`:''}${p.gdrive_url?`<a class="btn ghost sm wide" href="${esc(p.gdrive_url)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">📁 Open Drive folder</a>`:''}${cEmail(c)?`<a class="btn ghost sm wide" href="mailto:${esc(cEmail(c))}" style="text-align:center;text-decoration:none">✉️ Email ${esc(c.name)}</a>`:''}<button class="btn ghost sm wide" onclick="projLinks('${p.id}')">✎ Set WhatsApp / Drive links</button></div>`):''}
     </div>
     <div>${winWrap('THREAD',`<div class="msgs" id="msgs">${renderMsgs(msgs||[])}</div><div class="composer"><textarea id="msgIn" placeholder="Write a message…" rows="1"></textarea><button class="btn" onclick="sendMsg('${p.id}')">Send</button></div>`)}</div>
   </div>`;
@@ -1200,6 +1219,7 @@ async function doStage(pid,s){
   if(s===2) await sb.from('deliverables').update({status:'gate'}).eq('project_id',pid).eq('status','draft');
   if(s===3) await sb.from('deliverables').update({status:'review'}).eq('project_id',pid).eq('status','gate');
   await sb.from('messages').insert({project_id:pid,sender_id:ME.id,body:'→ Moved to “'+STAGES[s]+'”'});
+  syncShare(pid);
 }
 window.moveStageHere=async function(pid,s){ await doStage(pid,s); toast('Stage updated'); render(); };
 async function sendMsg(pid){ const ta=$('#msgIn'); const b=ta.value.trim(); if(!b)return; ta.value='';ta.style.height='auto';

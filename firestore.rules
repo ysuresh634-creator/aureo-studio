@@ -85,5 +85,16 @@ service cloud.firestore {
     match /accounts/{id}     { allow read, write: if isTeam(); }
     match /jobs/{id}         { allow read, write: if isTeam(); }
     match /followups/{id}    { allow read, write: if isTeam(); }
+
+    // Client share links: anyone with the exact link (doc id = unguessable token)
+    // can VIEW; nobody can enumerate; only team creates/updates the snapshot;
+    // the client (no login) may write ONLY their approve/changes action.
+    match /shares/{token} {
+      allow get:    if true;
+      allow list:   if false;
+      allow create, delete: if isTeam();
+      allow update: if isTeam()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['client_action','updated_at']);
+    }
   }
 }
