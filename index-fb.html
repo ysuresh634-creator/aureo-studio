@@ -136,7 +136,7 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 /* ===== stats ===== */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px}
 .stat{padding:16px 18px}
-.stat .n{font-family:var(--disp);font-size:34px;line-height:1}
+.stat .n{font-family:var(--disp);font-size:34px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat .l{margin-top:4px}
 .stat.gold{background:var(--gold)}
 .stat.ink{background:var(--ink);color:var(--cream)}
@@ -662,10 +662,10 @@ async function vTeamHome(){
   ${attn.length?`<div class="attn">${ICON.clock}<div>${attn.length} ${attn.length>1?'projects are':'project is'} in client review — nudge them if it’s been a while.</div></div>`:''}
   <div class="eyebrow" style="margin:6px 0 10px;cursor:pointer" onclick="nav('money')">Money · tap for the full picture →</div>
   <div class="stats">
-   ${stat((mSafe<0?'−':'')+inr(Math.abs(mSafe)),'Safe to spend',mSafe<0?'ink':'gold',"nav('money')")}
-   ${stat(inr(mSpent),'Spent this month','',"nav('money')")}
-   ${stat(inr(mPendingIn),'Incoming pending','',"nav('money')")}
-   ${stat(inr(mBalance),'Total balance','ink',"nav('money')")}
+   ${stat((mSafe<0?'−':'')+inrShort(Math.abs(mSafe)),'Safe to spend',mSafe<0?'ink':'gold',"nav('money')")}
+   ${stat(inrShort(mSpent),'Spent this month','',"nav('money')")}
+   ${stat(inrShort(mPendingIn),'Incoming pending','',"nav('money')")}
+   ${stat(inrShort(mBalance),'Total balance','ink',"nav('money')")}
   </div>
   <div class="detail-grid">
     <div id="homeProjects">${ps.length?`<div class="grid">${ps.map(p=>projCard(p,false)).join('')}</div>`:emptyState('No projects yet','Add your first client + project.','<button class="btn" onclick="newProject()">+ New project</button>')}</div>
@@ -698,7 +698,7 @@ function cEmail(c){ return (c.email&&c.email.includes('@'))?c.email:((c.contact|
 function waLink(p){ let d=(p||'').replace(/\D/g,''); if(!d)return ''; if(d.length===10)d='91'+d; return 'https://wa.me/'+d; }
 function daysSince(d){ if(!d)return null; const t=new Date(d+'T00:00:00').getTime(); if(isNaN(t))return null; return Math.floor((Date.now()-t)/86400000); }
 function isCold(c){ const s=CSTAT[c.id]||{proj:0}; if(!(s.proj>0))return false; const d=daysSince(c.last_contacted); return d===null||d>30; }
-function coldPill(c){ if(!isCold(c))return ''; const d=daysSince(c.last_contacted); return `<span class="ccold" title="Follow up — no contact logged${d!=null?' in '+d+' days':' yet'}">${d==null?'never':d+'d'} cold</span>`; }
+function coldPill(c){ if(!isCold(c))return ''; const d=daysSince(c.last_contacted); return `<span class="ccold" title="Follow up — no contact logged${d!=null?' in '+d+' days':' yet'}">${d==null?'not contacted':d+'d cold'}</span>`; }
 const CSEGS=[['all','All'],['active','Active'],['prospect','Prospects'],['due','Owes me'],['cold','Cold']];
 const CSORTS=[['name','Name A–Z'],['proj','Most projects'],['rev','Most revenue'],['due','Owes most'],['new','Recently added']];
 function cSegMatch(c,k){ const s=CSTAT[c.id]||{proj:0,due:0}; return k==='all'?true:k==='active'?s.proj>0:k==='prospect'?s.proj===0:k==='due'?s.due>0:k==='cold'?isCold(c):true; }
