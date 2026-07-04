@@ -454,11 +454,17 @@ window.migrate=async function(){
   const {data:{session}}=await old.auth.getSession();
   if(!session){ alert('Not logged into the OLD Supabase app in this browser. Open studio.yksproductions.com/index.html, log in there, then come back and click Import again.'); return; }
   const tables=['clients','projects','deliverables','files','messages','tasks','followups','jobs','invoices','payouts','transactions','budgets','fin_settings','recurring','accounts'];
-  const rep=[]; if(typeof toast==='function') toast('Importing… keep this tab open');
-  async function pull(t){ for(let a=0;a<5;a++){ try{ const {data,error}=await old.from(t).select('*'); if(!error) return data||[]; }catch(e){} await new Promise(r=>setTimeout(r,900*(a+1))); } return null; }
-  for(const t of tables){ const data=await pull(t); if(data===null){ rep.push(t+': ⚠ FAILED (Supabase unreachable — retry later)'); continue; } let n=0; for(const row of data){ try{ const id=row.id!=null?String(row.id):(row.category!=null?String(row.category):fdb.collection(t).doc().id); await fdb.collection(t).doc(id).set(row); n++; }catch(e){} } rep.push(t+': '+n); }
+  const rep=[]; const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  async function pull(t){ for(let a=0;a<5;a++){ try{ const {data,error}=await old.from(t).select('*'); if(!error) return data||[]; }catch(e){} await sleep(900*(a+1)); } return null; }
+  for(let ti=0;ti<tables.length;ti++){ const t=tables[ti];
+    if(typeof toast==='function') toast('Importing '+t+' ('+(ti+1)+'/'+tables.length+')…');
+    const data=await pull(t); if(data===null){ rep.push(t+': ⚠ FAILED (Supabase unreachable)'); continue; }
+    let n=0, werr=null;
+    for(let k=0;k<data.length;k+=400){ const chunk=data.slice(k,k+400); const batch=fdb.batch(); for(const row of chunk){ const id=row.id!=null?String(row.id):(row.category!=null?String(row.category):fdb.collection(t).doc().id); batch.set(fdb.collection(t).doc(id),row); } try{ await batch.commit(); n+=chunk.length; }catch(e){ werr=(e&&e.message)||String(e); break; } }
+    rep.push(t+': '+(werr?('⚠ WRITE BLOCKED — '+werr):n));
+  }
   MONEY=null;PROJECTS=null;JOBS=null;INV=null;FOLLOWUPS=null;
-  alert('Import complete:\n\n'+rep.join('\n')+'\n\nReloading…'); location.reload();
+  alert('Import result:\n\n'+rep.join('\n')+'\n\nReloading…'); location.reload();
 };
 const STAGES=['Brief','Production','The Gate','Client Review','Shipped'];
 const NOTE={0:'Scoping the work and locking the plan.',1:'The AI team is building your content right now.',2:'A human is checking every piece — legal, proofread, soul. Nothing ships unchecked.',3:'It’s with you — approve what you love, ask for changes on the rest.',4:'Live and out in the world. 🟡'};
