@@ -408,7 +408,8 @@ label{display:block;font-family:var(--mono);font-weight:700;font-size:11px;lette
 <script src="qrcode.js"></script>
 <script>
 /* ══════════ AUREO STUDIO v2 — Firebase (Firestore + Auth) ══════════ */
-firebase.initializeApp({apiKey:"AIzaSyCoZeSI-3RsX3tJdCc6jiQLU3AeZU_qgY4",authDomain:"aureo-studio-5aa35.firebaseapp.com",projectId:"aureo-studio-5aa35",storageBucket:"aureo-studio-5aa35.firebasestorage.app",messagingSenderId:"523812913751",appId:"1:523812913751:web:5f788617a5c2c0939c9912"});
+const FBCONFIG={apiKey:"AIzaSyCoZeSI-3RsX3tJdCc6jiQLU3AeZU_qgY4",authDomain:"aureo-studio-5aa35.firebaseapp.com",projectId:"aureo-studio-5aa35",storageBucket:"aureo-studio-5aa35.firebasestorage.app",messagingSenderId:"523812913751",appId:"1:523812913751:web:5f788617a5c2c0939c9912"};
+firebase.initializeApp(FBCONFIG);
 const fdb=firebase.firestore(), fauth=firebase.auth();
 const OWNER_EMAIL='ysuresh634@gmail.com';
 const nowISO=()=>new Date().toISOString();
@@ -762,7 +763,8 @@ async function vClientDetail(id){
      <div style="font-size:13px;line-height:2"><b>Contact</b><br>${esc(c.contact||'—')}<br><br><b>Email</b><br>${cEmail(c)?`<a href="mailto:${esc(cEmail(c))}" style="color:var(--blue)">${esc(cEmail(c))}</a>`:'—'}<br><br><b>Phone</b><br>${c.phone?esc(c.phone):'—'}<br><br><b>City</b><br>${esc(c.city||'—')}<br><br><b>Website</b><br>${c.website?`<a href="${esc(c.website)}" target="_blank" style="color:var(--blue)">${esc(c.website)}</a>`:'—'}<br><br><b>Last contacted</b><br>${c.last_contacted?fmtd(c.last_contacted)+(daysSince(c.last_contacted)!=null?' · '+daysSince(c.last_contacted)+'d ago':''):'<span class="muted">never logged</span>'}<br><br><b>Notes</b><br><span class="muted">${esc(c.notes||'—')}</span></div>
      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px">${waLink(c.phone)?`<a class="cact wa" href="${waLink(c.phone)}" target="_blank" rel="noopener">WA WhatsApp</a>`:''}${c.phone?`<a class="cact" href="tel:${esc(c.phone)}">☎ Call</a>`:''}${cEmail(c)?`<a class="cact" href="mailto:${esc(cEmail(c))}">✉ Email</a>`:''}<button class="cact" onclick="doLogContact('${c.id}')">✓ Log contact</button></div>
      <button class="btn ghost sm wide" style="margin-top:12px" onclick="editClient('${c.id}')">Edit client</button>
-     <button class="btn sm wide" style="margin-top:8px" onclick="newProject('${c.id}')">+ New project for ${esc(c.name)}</button>`)}</div>
+     <button class="btn sm wide" style="margin-top:8px" onclick="newProject('${c.id}')">+ New project for ${esc(c.name)}</button>
+     <button class="btn ghost sm wide" style="margin-top:8px" onclick="inviteClient('${c.id}')">👤 Give ${esc(c.name)} portal access</button>`)}</div>
   </div>`;
 }
 
@@ -1117,12 +1119,29 @@ async function vFreelancerProject(id){
 }
 function fUpload(pid){ modal('Upload your work',`<div class="tiny muted" style="margin-bottom:8px">Paste a share link (Drive / Frame.io / WeTransfer / Dropbox).</div><label>Label</label><input id="fuN" placeholder="Reel 03 — v1"><label>Link</label><input id="fuU" placeholder="https://"><button class="btn wide" style="margin-top:14px" onclick="doFUpload('${pid}')">Upload</button>`); }
 async function doFUpload(pid){ const n=$('#fuN').value.trim(),u=$('#fuU').value.trim(); if(!n||!u){toast('Label + link needed');return;} const {error}=await sb.from('files').insert({project_id:pid,name:n,url:u}); if(error){toast(error.message);return;} closeModal(); toast('Uploaded — Aureo will review'); render(); }
+/* --- create client/freelancer logins from inside the app; a secondary Firebase app instance so it never signs the team out --- */
+async function createLogin(email, profileData){
+  email=(email||'').trim().toLowerCase();
+  if(!email||email.indexOf('@')<1){ toast('Enter a valid email'); return null; }
+  let secApp; try{ secApp=firebase.app('sec'); }catch(e){ secApp=firebase.initializeApp(FBCONFIG,'sec'); }
+  const secAuth=secApp.auth();
+  const tempPw='Aureo-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
+  let uid;
+  try{ const cred=await secAuth.createUserWithEmailAndPassword(email,tempPw); uid=cred.user.uid; }
+  catch(e){ await secAuth.signOut().catch(()=>{}); toast(e.code==='auth/email-already-in-use'?'That email already has a login.':(e.message||'Could not create login')); return null; }
+  await secAuth.signOut().catch(()=>{});
+  try{ await fdb.collection('profiles').doc(uid).set(profileData); }catch(e){ toast('Login made but access failed: '+e.message); return uid; }
+  try{ await fauth.sendPasswordResetEmail(email); }catch(e){}
+  return uid;
+}
+function inviteClient(id){ const c=CLIENTS[id]||{}; const pre=cEmail(c); modal('Give client portal access',`<div class="tiny muted" style="margin-bottom:8px">Creates a login for <b>${esc(c.name||'this client')}</b>. They get an email to set their password, then see ONLY their own projects &amp; progress — never other clients, your freelancers, or your money.</div><label>Client's email</label><input id="ivcE" type="email" value="${esc(pre||'')}" placeholder="client@brand.com"><button class="btn wide" style="margin-top:14px" onclick="doInviteClient('${id}')">Create login &amp; email them</button>`); }
+async function doInviteClient(id){ const c=CLIENTS[id]||{}; const email=$('#ivcE').value.trim(); if(!email){toast('Enter their email');return;} toast('Creating login…'); const uid=await createLogin(email,{role:'client',client_id:id,name:c.name||'Client'}); if(uid){ closeModal(); toast('✓ Client login created — set-password email sent'); } }
 async function assignFreelancer(pid){
   const [{data:fl},{data:pr}]=await Promise.all([ sb.from('profiles').select('id,name').eq('role','freelancer'), sb.from('projects').select('freelancer_id').eq('id',pid).single() ]);
   const opts=(fl||[]).map(f=>`<option value="${f.id}" ${pr&&pr.freelancer_id===f.id?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
-  modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">The client never sees this — the uploaded work just appears as Aureo's.</div><label>Freelancer</label><select id="afS"><option value="">— none —</option>${opts}</select>${(fl&&fl.length)?'':`<div class="tiny muted" style="margin-top:8px">No freelancer logins yet. In Supabase → Auth invite their email, then set that profile's role to <b>freelancer</b>.</div>`}<button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Save</button>`);
+  modal('Assign freelancer (private)',`<div class="tiny muted" style="margin-bottom:8px">The client never sees this — uploaded work just appears as Aureo's.</div><label>Existing freelancer</label><select id="afS"><option value="">— none —</option>${opts}</select><div class="tiny muted" style="margin:14px 0 6px;font-weight:700;border-top:1.5px dashed rgba(0,0,0,.15);padding-top:12px">— or add a new one —</div><div class="two"><div><label>Name</label><input id="afN" placeholder="Ravi (editor)"></div><div><label>Email</label><input id="afE" type="email" placeholder="ravi@gmail.com"></div></div><button class="btn wide" style="margin-top:14px" onclick="doAssignFreelancer('${pid}')">Assign</button>`);
 }
-async function doAssignFreelancer(pid){ const fid=$('#afS').value||null; const {error}=await sb.from('projects').update({freelancer_id:fid}).eq('id',pid); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast(fid?'Freelancer assigned':'Assignment cleared'); render(); }
+async function doAssignFreelancer(pid){ const existing=$('#afS').value||null; const nm=($('#afN')&&$('#afN').value.trim())||''; const em=($('#afE')&&$('#afE').value.trim())||''; let fid=existing, created=false; if(!fid&&em){ toast('Creating freelancer login…'); fid=await createLogin(em,{role:'freelancer',name:nm||'Freelancer'}); if(!fid) return; created=true; } const {error}=await sb.from('projects').update({freelancer_id:fid}).eq('id',pid); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast(fid?('✓ Freelancer assigned'+(created?' — set-password email sent':'')):'Assignment cleared'); render(); }
 
 async function vProject(id){
   const {data:p}=await sb.from('projects').select('*').eq('id',id).maybeSingle();
