@@ -545,18 +545,17 @@ async function setPw(){
 }
 async function enter(preUser){
   let user=preUser; if(!user){ const {data}=await sb.auth.getUser(); user=data.user; } if(!user) return showLogin();
-  let prof=null, cls=[];
-  try{
-    const [pr,cl]=await Promise.all([
-      sb.from('profiles').select('role,client_id,name,title').eq('id',user.id).maybeSingle(),
-      sb.from('clients').select('*'),
-      loadProjects(true)                       // warm the projects cache in parallel
-    ]);
-    prof=pr.data; cls=cl.data||[];
+  let prof=null;
+  try{ const {data:pd}=await sb.from('profiles').select('role,client_id,name,title').eq('id',user.id).maybeSingle(); prof=pd;
     if(!prof && (user.email||'').toLowerCase()===OWNER_EMAIL){ prof={role:'team',name:'Yedukrishna Suresh',title:''}; try{ await fdb.collection('profiles').doc(user.id).set(prof); }catch(e){} }
-  }catch(e){ CLIENTS={}; }
-  ME={id:user.id,email:user.email,role:prof?.role||'client',client_id:prof?.client_id||null,name:prof?.name||user.email,title:prof?.title||''};
-  CLIENTS={}; cls.forEach(c=>CLIENTS[c.id]=c);
+  }catch(e){}
+  ME={id:user.id,email:user.email,role:(prof&&prof.role)||'client',client_id:(prof&&prof.client_id)||null,name:(prof&&prof.name)||user.email,title:(prof&&prof.title)||''};
+  CLIENTS={};
+  try{
+    if(ME.role==='team'){ const {data}=await sb.from('clients').select('*'); (data||[]).forEach(c=>CLIENTS[c.id]=c); }
+    else if(ME.role==='client'&&ME.client_id){ const {data}=await sb.from('clients').select('*').eq('id',ME.client_id); (data||[]).forEach(c=>CLIENTS[c.id]=c); }
+    await loadProjects(true);
+  }catch(e){}
   history.replaceState(null,'',location.pathname);
   $('#authWrap').classList.add('hide'); $('#setpwWrap').classList.add('hide'); $('#app').style.display='block';
   $('#roleBadge').textContent=ME.role==='team'?'TEAM':'CLIENT';
@@ -621,7 +620,7 @@ function projCard(p,clientView){
    <div class="pbar">${STAGES.map((s,i)=>`<i class="${i<=p.stage?'on':''}"></i>`).join('')}</div>
    <div class="pfoot"><span class="chip ${chip}">${p.stage===2?'🔒 '+st:st}</span><div style="display:flex;gap:6px;align-items:center">${dm?`<span class="chip ${dm.cls}">${dm.txt}</span>`:''}${pr}<span class="tiny muted">${prog(p)}%</span></div></div></div></div>`;
 }
-async function loadProjects(force){ if(PROJECTS&&!force) return PROJECTS; const {data}=await sb.from('projects').select('*').order('created_at',{ascending:false}); PROJECTS=data||[]; return PROJECTS; }
+async function loadProjects(force){ if(PROJECTS&&!force) return PROJECTS; let q=sb.from('projects').select('*'); if(ME&&ME.role==='client'&&ME.client_id) q=q.eq('client_id',ME.client_id); else if(ME&&ME.role==='freelancer') q=q.eq('freelancer_id',ME.id); q=q.order('created_at',{ascending:false}); const {data}=await q; PROJECTS=data||[]; return PROJECTS; }
 
 async function vTeamHome(){
   const ps=await loadProjects();

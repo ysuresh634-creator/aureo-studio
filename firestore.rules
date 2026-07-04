@@ -1,0 +1,89 @@
+rules_version = '2';
+// Aureo Studio — role-based access. team = full · client = only their projects
+// (progress + approvals) · freelancer = only assigned projects (upload work),
+// never the client identity/thread. Money + jobs + internal are team-only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()   { return request.auth != null; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)); }
+    function me()         { return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data; }
+    function role()       { return hasProfile() ? me().role : 'none'; }
+    function isTeam()       { return role() == 'team'; }
+    function isClient()     { return role() == 'client'; }
+    function isFreelancer() { return role() == 'freelancer'; }
+    function myClientId() { return me().client_id; }
+    function proj(pid)    { return get(/databases/$(database)/documents/projects/$(pid)).data; }
+
+    // Profiles: read your own or (team) anyone. Only team writes profiles —
+    // except the owner bootstrapping their own team profile on first login.
+    match /profiles/{uid} {
+      allow read:   if signedIn() && (request.auth.uid == uid || isTeam());
+      allow create: if isTeam()
+                    || (request.auth.uid == uid
+                        && request.auth.token.email == 'ysuresh634@gmail.com'
+                        && request.resource.data.role == 'team');
+      allow update, delete: if isTeam();
+    }
+
+    // Clients: team full; a client may read only their own client record.
+    match /clients/{id} {
+      allow read:  if isTeam() || (isClient() && id == myClientId());
+      allow write: if isTeam();
+    }
+
+    // Projects: team full; client reads their client's projects; freelancer reads assigned.
+    match /projects/{id} {
+      allow read:  if isTeam()
+                   || (isClient() && resource.data.client_id == myClientId())
+                   || (isFreelancer() && resource.data.freelancer_id == request.auth.uid);
+      allow write: if isTeam();
+    }
+
+    // Deliverables: team full; client reads + approves/requests-changes on own projects;
+    // freelancer reads + uploads on assigned projects.
+    match /deliverables/{id} {
+      allow read:   if isTeam()
+                    || (isClient() && proj(resource.data.project_id).client_id == myClientId())
+                    || (isFreelancer() && proj(resource.data.project_id).freelancer_id == request.auth.uid);
+      allow create: if isTeam()
+                    || (isFreelancer() && proj(request.resource.data.project_id).freelancer_id == request.auth.uid);
+      allow update: if isTeam()
+                    || (isClient() && proj(resource.data.project_id).client_id == myClientId())
+                    || (isFreelancer() && proj(resource.data.project_id).freelancer_id == request.auth.uid);
+      allow delete: if isTeam();
+    }
+
+    // Files: team full; client reads own project files; freelancer reads + uploads on assigned.
+    match /files/{id} {
+      allow read:   if isTeam()
+                    || (isClient() && proj(resource.data.project_id).client_id == myClientId())
+                    || (isFreelancer() && proj(resource.data.project_id).freelancer_id == request.auth.uid);
+      allow create: if isTeam()
+                    || (isFreelancer() && proj(request.resource.data.project_id).freelancer_id == request.auth.uid);
+      allow update, delete: if isTeam();
+    }
+
+    // Messages (client <-> team thread): team full; client read+write on own projects.
+    // Freelancers get NOTHING here — that is what keeps the client identity/thread private.
+    match /messages/{id} {
+      allow read:   if isTeam()
+                    || (isClient() && proj(resource.data.project_id).client_id == myClientId());
+      allow create: if isTeam()
+                    || (isClient() && proj(request.resource.data.project_id).client_id == myClientId());
+      allow update, delete: if isTeam();
+    }
+
+    // Internal checklist + everything money/private: team only.
+    match /tasks/{id}        { allow read, write: if isTeam(); }
+    match /invoices/{id}     { allow read, write: if isTeam(); }
+    match /payouts/{id}      { allow read, write: if isTeam(); }
+    match /transactions/{id} { allow read, write: if isTeam(); }
+    match /budgets/{id}      { allow read, write: if isTeam(); }
+    match /fin_settings/{id} { allow read, write: if isTeam(); }
+    match /recurring/{id}    { allow read, write: if isTeam(); }
+    match /accounts/{id}     { allow read, write: if isTeam(); }
+    match /jobs/{id}         { allow read, write: if isTeam(); }
+    match /followups/{id}    { allow read, write: if isTeam(); }
+  }
+}
