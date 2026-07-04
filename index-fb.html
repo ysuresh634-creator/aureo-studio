@@ -563,6 +563,8 @@ async function enter(preUser){
     if(!prof && (user.email||'').toLowerCase()===OWNER_EMAIL){ prof={role:'team',name:'Yedukrishna Suresh',title:''}; try{ await fdb.collection('profiles').doc(user.id).set(prof); }catch(e){} }
   }catch(e){}
   ME={id:user.id,email:user.email,role:(prof&&prof.role)||'client',client_id:(prof&&prof.client_id)||null,name:(prof&&prof.name)||user.email,title:(prof&&prof.title)||''};
+  // TEAM-ONLY app. No client/freelancer ever sees the dashboard, money, or other projects — they use no-login share links / Drive / WhatsApp.
+  if(ME.role!=='team'){ try{ await sb.auth.signOut(); }catch(e){} ME=null; showLogin(); setTimeout(()=>alert('Aureo Studio is for the team only.\n\nIf you are a client, open the progress link we sent you — no login needed.\nIf you are a freelancer, everything is in your project WhatsApp group + Drive folder.'),50); return; }
   CLIENTS={};
   try{
     if(ME.role==='team'){ const {data}=await sb.from('clients').select('*'); (data||[]).forEach(c=>CLIENTS[c.id]=c); }
@@ -576,13 +578,10 @@ async function enter(preUser){
   buildNav(); fxRefresh(); view={v:'home',arg:null}; render();
 }
 function buildNav(){
-  const items = ME.role==='team'
-    ? [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['monitor','Monitor',ICON.clients],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]]
-    : ME.role==='freelancer'
-    ? [['home','My tasks',ICON.folder]]
-    : [['home','My Work',ICON.home],['msgs','Messages',ICON.msg]];
+  // Team-only app — non-team users are bounced before this ever runs.
+  const items = [['home','Dashboard',ICON.home],['clients','Clients',ICON.clients],['pipeline','Pipeline',ICON.pipeline],['monitor','Monitor',ICON.clients],['inbox','Inbox',ICON.inbox],['jobs','Jobs',ICON.briefcase],['money','Money',ICON.money],['msgs','Messages',ICON.msg]];
   $('#sideNav').innerHTML=items.map(([v,l,ic])=>`<button class="nav-i" data-v="${v}" onclick="nav('${v}')">${ic}${l}</button>`).join('')
-    + (ME.role==='team'?`<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`:'');
+    + `<button class="btn sm wide" style="margin-top:8px" onclick="newProject()">+ New project</button>`;
   $('#mobNav').innerHTML=items.map(([v,l,ic])=>`<button data-v="${v}" onclick="nav('${v}')">${ic}<span>${l}</span></button>`).join('');
 }
 function markNav(){ $$('.nav-i,[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view.v || (view.v==='project'&&b.dataset.v==='home'))); }
