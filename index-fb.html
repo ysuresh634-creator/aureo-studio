@@ -419,9 +419,21 @@ async function _exec(S){
     const col=fdb.collection(S.table);
     if(S.op==='insert'){ const arr=Array.isArray(S.payload)?S.payload:[S.payload]; const out=[]; for(const o of arr){ const obj=Object.assign({},o); if(obj.created_at==null) obj.created_at=nowISO(); let id=(obj.id!=null)?String(obj.id):col.doc().id; delete obj.id; await col.doc(id).set(obj); out.push(Object.assign({id},obj)); } return {data:S.single?out[0]:out,error:null}; }
     if(S.op==='upsert'){ const arr=Array.isArray(S.payload)?S.payload:[S.payload]; const pk=_pk(S.table); for(const o of arr){ const obj=Object.assign({},o); const id=String(obj[pk]); if(pk==='id') delete obj.id; await col.doc(id).set(obj,{merge:true}); } return {data:null,error:null}; }
-    if(S.op==='update'||S.op==='delete'){ const snap=await col.get(); let docs=snap.docs.map(d=>({id:d.id,ref:d.ref,data:d.data()})); for(const [c,v] of S.filters) docs=docs.filter(x=>(c==='id'?x.id:x.data[c])===v); if(S.op==='delete'){ for(const x of docs) await x.ref.delete(); return {data:null,error:null}; } const out=[]; for(const x of docs){ await x.ref.update(S.patch); out.push(Object.assign({id:x.id},x.data,S.patch)); } return {data:S.single?out[0]:(S.returning?out:null),error:null}; }
-    const snap=await col.get(); let rows=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
-    for(const [c,v] of S.filters) rows=rows.filter(r=>r[c]===v);
+    const idF=S.filters.find(f=>f[0]==='id'); const nonId=S.filters.filter(f=>f[0]!=='id');
+    // FAST PATH: single eq by id -> direct doc() (O(1), no collection scan)
+    if(idF && nonId.length===0){
+      const ref=col.doc(String(idF[1]));
+      if(S.op==='delete'){ await ref.delete(); return {data:null,error:null}; }
+      if(S.op==='update'){ await ref.update(S.patch); if(!S.returning&&!S.single) return {data:null,error:null}; const d=await ref.get(); const row=d.exists?Object.assign({id:d.id},d.data()):null; return {data:S.single?row:(row?[row]:[]),error:null}; }
+      const d=await ref.get(); const row=d.exists?Object.assign({id:d.id},d.data()):null; if(S.single) return {data:row,error:null}; return {data:row?[row]:[],error:null};
+    }
+    // QUERY PATH: narrow with first non-id eq via a single-field where (auto-indexed, no scan); rest client-side
+    let q=col; if(nonId.length){ q=col.where(nonId[0][0],'==',nonId[0][1]); }
+    const snap=await q.get(); let items=snap.docs.map(d=>({id:d.id,ref:d.ref,data:d.data()}));
+    for(const [c,v] of S.filters) items=items.filter(x=>(c==='id'?x.id:x.data[c])===v);
+    if(S.op==='delete'){ for(const x of items) await x.ref.delete(); return {data:null,error:null}; }
+    if(S.op==='update'){ const out=[]; for(const x of items){ await x.ref.update(S.patch); out.push(Object.assign({id:x.id},x.data,S.patch)); } return {data:S.single?out[0]:(S.returning?out:null),error:null}; }
+    let rows=items.map(x=>Object.assign({id:x.id},x.data));
     if(S.order){ const [c,dir]=S.order; rows.sort((a,b)=>{ let x=a[c],y=b[c]; if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1; return x<y?(dir==='asc'?-1:1):x>y?(dir==='asc'?1:-1):0; }); }
     if(S.lim!=null) rows=rows.slice(0,S.lim);
     if(S.single) return {data:rows[0]||null,error:null};
