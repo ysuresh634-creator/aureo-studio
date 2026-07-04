@@ -499,7 +499,7 @@ const ICON={
   clock:'<svg class="skf" width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="9" stroke="#16181D" stroke-width="2.2"/><path d="M12 7v5l3 2" stroke="#FFCC00" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 
-let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null, FOLLOWUPS=null, ACT=null;
+let ME=null, CLIENTS={}, PROJECTS=null, view={v:'home',arg:null}, ch=null, SEARCH='', MTAB='overview', MHPER='month', MONEY=null, JOBS=null, JFILTER='active', CVIEW='list', CSEG='all', CSORT='name', CSTAT={}, INV=null, FOLLOWUPS=null, ACT=null, CLIENTFB={};
 
 const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove('on'),2400)};
 function modal(title,html){$('#modalTitle').textContent=title;$('#modal').innerHTML=html;$('#modalBg').classList.add('on')}
@@ -1146,7 +1146,7 @@ async function syncShare(pid){
   const p=(PROJECTS||[]).find(x=>x.id===pid); if(!p||!p.share_token) return;
   let items=[]; try{ const r=await sb.from('deliverables').select('*').eq('project_id',pid).order('created_at'); items=r.data||[]; }catch(e){}
   const c=CLIENTS[p.client_id]||{};
-  const snap={ project_id:pid, title:p.title||'', client:c.name||'', type:p.type||'', stage:p.stage||0, updated_at:nowISO(), deliverables:items.map(it=>({title:it.title||'',emoji:it.emoji||'📄',status:it.status||'draft'})) };
+  const snap={ project_id:pid, title:p.title||'', client:c.name||'', type:p.type||'', stage:p.stage||0, updated_at:nowISO(), deliverables:items.map(it=>({id:it.id,title:it.title||'',emoji:it.emoji||'📄',status:it.status||'draft',url:it.url||null})) };
   try{ await fdb.collection('shares').doc(p.share_token).set(snap,{merge:true}); }catch(e){}
 }
 async function shareProject(pid){
@@ -1172,6 +1172,7 @@ async function vProject(id){
     sb.from('files').select('*').eq('project_id',id).order('created_at')
   ]);
   const tasks=tasksRes.data||[];
+  CLIENTFB={}; if(team&&p.share_token){ try{ const sd=await fdb.collection('shares').doc(p.share_token).get(); if(sd.exists) CLIENTFB=(sd.data()||{}).client_action||{}; }catch(e){} }
   $('#view').innerHTML=`
   <button class="back" onclick="nav('${team?'home':'home'}')">← ${team?'Dashboard':'My work'}</button>
   <div class="page-h" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><div class="eyebrow">${esc(c.name)} · ${esc(p.type||'')}</div><h1>${esc(p.title)}</h1></div>
@@ -1192,11 +1193,16 @@ async function vProject(id){
   subscribe(id);
 }
 function itemRow(p,it,team){
-  const map={draft:['✏️ In production','chip'],gate:['🔒 At the gate','chip ink'],review:['👀 Your review','chip gold'],approved:['✓ Approved','chip ok'],changes:['↺ Changes asked','chip warn']};
+  const map={draft:['✏️ In production','chip'],gate:['🔒 At the gate','chip ink'],review:['👀 Client review','chip gold'],approved:['✓ Approved','chip ok'],changes:['↺ Changes asked','chip warn']};
   const [lb,cls]=map[it.status]||map.draft; let action='';
   if(ME.role==='client'&&it.status==='review') action=`<div class="approve-row"><button class="btn sm" onclick="approve('${it.id}','${p.id}')">✓ Approve</button><button class="btn ghost sm" onclick="reqChange('${it.id}','${p.id}')">↺ Changes</button></div>`;
-  return `<div class="item"><div class="ic">${it.emoji||'📄'}</div><div class="mt"><b>${esc(it.title)}</b><span>${team?'Set by the studio':'Deliverable'}</span>${action}</div><div><span class="${cls}">${lb}</span></div></div>`;
+  const work = it.url?`<a class="tiny" href="${esc(it.url)}" target="_blank" rel="noopener" style="color:var(--blue);display:inline-block;margin-top:4px;font-weight:700">▶ View work ↗</a>`:'';
+  const fb = (CLIENTFB||{})[it.id];
+  const fbline = fb?`<span class="tiny" style="display:block;margin-top:4px;color:${fb.action==='approved'?'var(--ok)':'#a15656'};font-weight:700">${fb.action==='approved'?'✓ Client approved':'↺ Client asked: '+esc(fb.note||'changes')}</span>`:'';
+  const teamBtns = team?`<div class="approve-row"><button class="btn ghost sm" onclick="editItem('${it.id}','${p.id}')">${it.url?'Edit work':'+ Attach work'}</button>${(it.url&&it.status!=='review'&&it.status!=='approved')?`<button class="btn sm" onclick="sendReview('${it.id}','${p.id}')">Send to client</button>`:''}${(fb&&fb.action==='approved'&&it.status!=='approved')?`<button class="btn sm" onclick="approve('${it.id}','${p.id}')">Mark approved</button>`:''}${(fb&&fb.action==='changes'&&it.status!=='changes')?`<button class="btn ghost sm" onclick="applyChanges('${it.id}','${p.id}')">Log the change</button>`:''}</div>`:'';
+  return `<div class="item"><div class="ic">${it.emoji||'📄'}</div><div class="mt"><b>${esc(it.title)}</b><span>${team?'Set by the studio':'Deliverable'}</span>${work}${it.change_note?`<span class="tiny" style="color:#a15656;display:block;margin-top:3px">↺ ${esc(it.change_note)}</span>`:''}${fbline}${action}${teamBtns}</div><div><span class="${cls}">${lb}</span></div></div>`;
 }
+async function applyChanges(itid,pid){ const fb=(CLIENTFB||{})[itid]; const note=(fb&&fb.note)||'Client requested changes'; await sb.from('deliverables').update({status:'changes',change_note:note}).eq('id',itid); toast('Change logged — back to the studio'); syncShare(pid); render(); }
 function renderMsgs(list){
   if(!list.length) return `<div class="msg sys">Start of your project thread.</div>`;
   return list.map(m=>{ if(m.system) return `<div class="msg sys">${esc(m.body)}</div>`;
@@ -1243,10 +1249,13 @@ async function doNewProject(){ const title=$('#npT').value.trim(); if(!title){to
   if(error){toast(error.message);return;} PROJECTS=null; const cid=data.client_id; if(cid){ if(CLIENTS[cid]) CLIENTS[cid].last_contacted=today10(); sb.from('clients').update({last_contacted:today10()}).eq('id',cid).then(()=>{}); } closeModal(); toast('Project created'); nav('project',data.id); }
 function editProject(id){ sb.from('projects').select('*').eq('id',id).single().then(({data:p})=>{ modal('Edit project',`<label>Title</label><input id="epT" value="${esc(p.title)}"><label>Type</label><input id="epTy" value="${esc(p.type||'')}"><div class="two"><div><label>Due date</label><input id="epD" type="date" value="${p.due_date||''}"></div><div><label>Priority</label><select id="epP"><option value="normal" ${p.priority==='normal'?'selected':''}>Normal</option><option value="high" ${p.priority==='high'?'selected':''}>High</option><option value="low" ${p.priority==='low'?'selected':''}>Low</option></select></div></div><button class="btn wide" style="margin-top:14px" onclick="doEditProject('${id}')">Save</button>`); }); }
 async function doEditProject(id){ const {error}=await sb.from('projects').update({title:$('#epT').value.trim(),type:$('#epTy').value.trim(),due_date:$('#epD').value||null,priority:$('#epP').value}).eq('id',id); if(error){toast(error.message);return;} PROJECTS=null; closeModal(); toast('Saved'); render(); }
-function addItem(pid){ modal('Add deliverable',`<label>Title</label><input id="aiT" placeholder="Reel 03 — testimonial"><label>Emoji</label><input id="aiE" placeholder="🎬" maxlength="4"><button class="btn wide" style="margin-top:14px" onclick="doAddItem('${pid}')">Add</button>`); }
+function addItem(pid){ modal('Add deliverable',`<label>Title</label><input id="aiT" placeholder="Reel 03 — testimonial"><div class="two"><div><label>Emoji</label><input id="aiE" placeholder="🎬" maxlength="4"></div><div><label>Show client now?</label><select id="aiR"><option value="no">Not yet</option><option value="yes">Yes — for review</option></select></div></div><label>Work / preview link (what the client watches)</label><input id="aiU" placeholder="Drive preview / YouTube unlisted / Vimeo review"><button class="btn wide" style="margin-top:14px" onclick="doAddItem('${pid}')">Add</button>`); }
 async function doAddItem(pid){ const t=$('#aiT').value.trim(); if(!t){toast('Give it a title');return;}
-  const {data:p}=await sb.from('projects').select('stage').eq('id',pid).single(); const st=p.stage>=3?'review':p.stage===2?'gate':'draft';
-  const {error}=await sb.from('deliverables').insert({project_id:pid,title:t,emoji:$('#aiE').value.trim()||'📄',status:st}); if(error){toast(error.message);return;} closeModal(); render(); }
+  const {data:p}=await sb.from('projects').select('stage').eq('id',pid).single(); let st=p.stage>=3?'review':p.stage===2?'gate':'draft'; if($('#aiR')&&$('#aiR').value==='yes') st='review';
+  const {error}=await sb.from('deliverables').insert({project_id:pid,title:t,emoji:$('#aiE').value.trim()||'📄',url:($('#aiU')&&$('#aiU').value.trim())||null,status:st}); if(error){toast(error.message);return;} closeModal(); syncShare(pid); render(); }
+async function editItem(itid,pid){ const {data:it}=await sb.from('deliverables').select('*').eq('id',itid).single(); if(!it)return; modal('Attach / edit the work',`<div class="tiny muted" style="margin-bottom:8px">Paste the link the client watches — a Drive preview, YouTube unlisted, Vimeo review, or image link.</div><label>Title</label><input id="eiT" value="${esc(it.title||'')}"><label>Emoji</label><input id="eiE" value="${esc(it.emoji||'')}" maxlength="4"><label>Work / preview link</label><input id="eiU" value="${esc(it.url||'')}" placeholder="https://drive.google.com/..."><button class="btn wide" style="margin-top:14px" onclick="doEditItem('${itid}','${pid}')">Save</button>`); }
+async function doEditItem(itid,pid){ const {error}=await sb.from('deliverables').update({title:$('#eiT').value.trim(),emoji:$('#eiE').value.trim()||'📄',url:$('#eiU').value.trim()||null}).eq('id',itid); if(error){toast(error.message);return;} closeModal(); toast('Saved'); syncShare(pid); render(); }
+async function sendReview(itid,pid){ await sb.from('deliverables').update({status:'review',change_note:null}).eq('id',itid); toast('Sent to client for review'); syncShare(pid); render(); }
 function addFile(pid){ modal('Add file / link',`<label>Name</label><input id="afN" placeholder="Final carousel (Drive)"><label>URL</label><input id="afU" placeholder="https://"><button class="btn wide" style="margin-top:14px" onclick="doAddFile('${pid}')">Add</button>`); }
 async function doAddFile(pid){ const n=$('#afN').value.trim(),u=$('#afU').value.trim(); if(!n||!u){toast('Name + URL needed');return;} const {error}=await sb.from('files').insert({project_id:pid,name:n,url:u}); if(error){toast(error.message);return;} closeModal(); toast('File added'); render(); }
 async function delFile(id,pid){ await sb.from('files').delete().eq('id',id); render(); }

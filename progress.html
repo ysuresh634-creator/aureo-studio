@@ -26,8 +26,16 @@
   .step:not(.done):not(.cur) .lb{color:var(--muted)}
   .gate .dot{border-color:var(--ink)}
   h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:26px 0 10px}
-  .del{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:14px}
-  .del b{flex:1;font-weight:600}
+  .del{padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;font-size:14px}
+  .delhead{display:flex;align-items:center;gap:9px}
+  .delhead b{flex:1;font-weight:700}
+  .watch{display:inline-block;margin-top:11px;background:var(--ink);color:var(--gold);font-weight:800;font-size:13px;text-decoration:none;padding:10px 15px;border-radius:9px}
+  .fbbox{margin-top:12px}
+  .fbbox textarea{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:10px;font-family:inherit;font-size:14px;resize:vertical;min-height:54px;box-sizing:border-box}
+  .fbbox .actions{margin-top:10px}
+  .fbdone{margin-top:11px;font-size:13px;font-weight:700;padding:9px 12px;border-radius:9px}
+  .fbdone.approved{background:#e2f6e8;color:var(--ok)}
+  .fbdone.changes{background:#fff3d4;color:#8a6300}
   .st{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
   .st-approved{background:#e2f6e8;color:var(--ok)} .st-review{background:#fff3d4;color:#8a6300}
   .st-draft,.st-gate{background:#eef1f6;color:#55607a} .st-changes{background:#f4e9e9;color:#a15656}
@@ -59,28 +67,36 @@ async function load(){
   catch(e){ msg('Could not load — please try again in a moment.'); return; }
   render(s);
 }
+const SLBL={draft:'in progress',gate:'in progress',review:'ready for you',approved:'approved',changes:'revising'};
 function render(s){
+  window.__s=s;
   const stage=s.stage||0;
   const steps=STAGES.map((st,i)=>`<div class="step ${i<stage?'done':i===stage?'cur':''} ${st==='The Gate'?'gate':''}"><div class="dot">${i<stage?'✓':i+1}</div><div class="lb">${esc(st)}</div></div>`).join('');
-  const dels=(s.deliverables||[]).length ? s.deliverables.map(d=>`<div class="del"><span>${esc(d.emoji||'📄')}</span> <b>${esc(d.title||'Deliverable')}</b> <span class="st st-${esc(d.status||'draft')}">${esc(d.status||'draft')}</span></div>`).join('') : '<div class="note" style="text-align:left">Deliverables will appear here as work progresses.</div>';
-  const acted = s.client_action && s.client_action.action;
-  let actions='';
-  if(stage===3 && !acted){ actions=`<div class="actions"><button class="btn" onclick="act('approved')">✓ Approve</button><button class="btn ghost" onclick="act('changes')">✏️ Request changes</button></div>`; }
-  else if(acted){ actions=`<div class="banner">${s.client_action.action==='approved'?'✓ You approved this — thank you!':'✏️ Change request sent. The team is on it.'}</div>`; }
+  const fbmap=s.client_action||{};
+  const dels=(s.deliverables||[]).length ? s.deliverables.map(d=>{
+    const fb=fbmap[d.id];
+    const work=d.url?`<a class="watch" href="${esc(d.url)}" target="_blank" rel="noopener">▶ Watch / view the work</a>`:'';
+    let panel='';
+    if(fb){ panel=`<div class="fbdone ${fb.action}">${fb.action==='approved'?'✓ You approved this':'↺ You asked for changes'}${fb.note?' — “'+esc(fb.note)+'”':''}</div>`; }
+    else if(d.status==='review'){ panel=`<div class="fbbox"><textarea id="fb_${esc(d.id)}" placeholder="Anything to change? (leave blank to just approve)"></textarea><div class="actions"><button class="btn" onclick="act('${esc(d.id)}','approved')">✓ Approve</button><button class="btn ghost" onclick="act('${esc(d.id)}','changes')">✏️ Request changes</button></div></div>`; }
+    return `<div class="del"><div class="delhead"><span>${esc(d.emoji||'📄')}</span><b>${esc(d.title||'Deliverable')}</b><span class="st st-${esc(d.status||'draft')}">${esc(SLBL[d.status]||d.status||'')}</span></div>${work}${panel}</div>`;
+  }).join('') : '<div class="note" style="text-align:left">Your pieces will appear here as work progresses — you’ll watch each one and approve it before we finish.</div>';
   app.innerHTML=`<div class="wrap">
     <div class="brand"><span class="dot"></span>Aureo</div>
     <div class="card">
       <div class="ttl">${esc(s.title||'Your project')}</div>
       <div class="sub">${esc(s.client||'')}${s.type?' · '+esc(s.type):''} · Live progress</div>
       <div class="steps">${steps}</div>
-      <h3>What we're delivering</h3>${dels}
-      ${actions}
+      <h3>Your work — watch &amp; approve each piece</h3>${dels}
     </div>
-    <div class="note">You're seeing live progress — no login needed. Questions? Just reply on WhatsApp. 🟡</div>
+    <div class="note">Live progress, no login. Watch each edit, leave feedback, approve when you’re happy. Anything else — just reply on WhatsApp. 🟡</div>
   </div>`;
 }
-window.act=async function(action){
-  try{ await db.collection('shares').doc(TOK).update({client_action:{action:action,at:new Date().toISOString()}}); }catch(e){}
+window.act=async function(itemId,action){
+  const ta=document.getElementById('fb_'+itemId); const note=ta?ta.value.trim():'';
+  const cur=(window.__s&&window.__s.client_action)?Object.assign({},window.__s.client_action):{};
+  cur[itemId]={action:action,note:note,at:new Date().toISOString()};
+  try{ await db.collection('shares').doc(TOK).update({client_action:cur,updated_at:new Date().toISOString()}); }catch(e){}
   load();
 };
 load();
